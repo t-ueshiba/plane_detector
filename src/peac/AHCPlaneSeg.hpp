@@ -273,9 +273,6 @@ class PlaneSeg
 			if (nanCnt < nanCntTh)
 			    continue;
 		    }
-#ifdef DEBUG_INIT
-		    _type = TYPE_MISSING_DATA;
-#endif
 		    windowValid=false;
 		    break;
 		}
@@ -284,9 +281,6 @@ class PlaneSeg
 		    points.get(v, u + 1, xn, yn, zn) &&
 		    depthDisContinuous(z, zn, params))
 		{
-#ifdef DEBUG_INIT
-		    _type = TYPE_DEPTH_DISCONTINUE;
-#endif
 		    windowValid=false;
 		    break;
 		}
@@ -294,9 +288,6 @@ class PlaneSeg
 		    points.get(v + 1, u, xn, yn, zn) &&
 		    depthDisContinuous(z, zn, params))
 		{
-#ifdef DEBUG_INIT
-		    _type = TYPE_DEPTH_DISCONTINUE;
-#endif
 		    windowValid = false;
 		    break;
 		}
@@ -310,9 +301,6 @@ class PlaneSeg
 	{//if nan or depth-discontinuity shows, this obj will be rejected
 	    _N	   = _stats.size();
 	    _nouse = false;
-#ifdef DEBUG_INIT
-	    _type  = TYPE_NORMAL;
-#endif
 	}
 	else
 	{
@@ -328,18 +316,9 @@ class PlaneSeg
 	else
 	{
 	    _stats.compute(_center, _normal, _mse, _curvature);
-#ifdef DEBUG_CALC
-	    _mseseq.push_back(cv::Vec2d(_N, _mse));
-#endif
 	  //nbs information to be maintained outside the class
 	  //typically when initializing the graph structure
 	}
-#if defined(DEBUG_INIT) || defined(DEBUG_CLUSTER)
-	_normalClr = cv::Vec3b(uchar((_normal[0] + 1.0) * 0.5 * 255.0),
-			       uchar((_normal[1] + 1.0) * 0.5 * 255.0),
-			       uchar((_normal[2] + 1.0) * 0.5 * 255.0));
-	_clr	   = cv::Vec3b(rand() % 255, rand() % 255, rand() % 255);
-#endif
       //std::cout<<_curvature<<std::endl;
     }
 
@@ -356,21 +335,12 @@ class PlaneSeg
 	 _N(_stats.size()),
 	 _nouse(false)
     {
-#ifdef DEBUG_INIT
-	_type = TYPE_NORMAL;
-#endif
       //ds.union(pa._rid, pb._rid) will be called later
       //in mergeNbsFrom(pa,pb) function, since
       //this object might not be accepted into the graph structure
 
 	_stats.compute(_center, _normal, _mse, _curvature);
 
-#if defined(DEBUG_CLUSTER)
-	_normalClr = cv::Vec3b(uchar((_normal[0] + 1.0) * 0.5 * 255.0),
-			       uchar((_normal[1] + 1.0) * 0.5 * 255.0),
-			       uchar((_normal[2] + 1.0) * 0.5 * 255.0));
-	_clr	   = cv::Vec3b(rand() % 255, rand() % 255, rand() % 255);
-#endif
       //nbs information to be maintained later if this node is accepted
     }
 
@@ -470,38 +440,11 @@ class PlaneSeg
 			nb->_nbs.insert(this);
 
 		    pa._nouse=pb._nouse=true;
-#ifdef DEBUG_CALC
-		    if (pa._N >= pb._N)
-			_mseseq.swap(pa._mseseq);
-		    else
-			_mseseq.swap(pb._mseseq);
-		    _mseseq.push_back(cv::Vec2d(_N, _mse));
-#endif
 		}
 
   private:
     Stats			_stats;
     T				_curvature;
-#ifdef DEBUG_CALC
-    std::vector<cv::Vec2d>	_mseseq;
-#endif
-#ifdef DEBUG_INIT
-    enum Type
-    {
-	TYPE_NORMAL		= 0,	//default value
-	TYPE_MISSING_DATA	= 1,
-	TYPE_DEPTH_DISCONTINUE	= 2
-    };
-    Type			_type;
-#endif
-#if defined(DEBUG_INIT) || defined(DEBUG_CLUSTER)
-    cv::Vec3b			_clr;
-    cv::Vec3b			_normalClr;
-    cv::Vec3b&			getColor(bool useNormal=true)
-				{
-				    return (useNormal ? _normalClr : _clr);
-				}
-#endif
 
   public:
     int		_rid;		//root block id
