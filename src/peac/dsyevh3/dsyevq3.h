@@ -16,17 +16,20 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 // ----------------------------------------------------------------------------
+#pragma once
+
 #include <stdio.h>
 #include <math.h>
 #include "dsytrd3.h"
 #include "dsyevq3.h"
 
 // Macros
-#define SQR(x)      ((x)*(x))                        // x^2 
+#define SQR(x)      ((x)*(x))                        // x^2
 
 
 // ----------------------------------------------------------------------------
-int dsyevq3(double A[3][3], double Q[3][3], double w[3])
+template <class T>
+int dsyevq3(T A[3][3], T Q[3][3], T w[3])
 // ----------------------------------------------------------------------------
 // Calculates the eigenvalues and normalized eigenvectors of a symmetric 3x3
 // matrix A using the QL algorithm with implicit shifts, preceded by a
@@ -48,14 +51,14 @@ int dsyevq3(double A[3][3], double Q[3][3], double w[3])
 // ----------------------------------------------------------------------------
 {
   const int n = 3;
-  double e[3];                   // The third element is used only as temporary workspace
-  double g, r, p, f, b, s, c, t; // Intermediate storage
+  T e[3];                   // The third element is used only as temporary workspace
+  T g, r, p, f, b, s, c, t; // Intermediate storage
   int nIter;
   int m;
 
   // Transform A to real tridiagonal form by the Householder method
   dsytrd3(A, Q, w, e);
-  
+
   // Calculate eigensystem of the remaining real symmetric tridiagonal matrix
   // with the QL method
   //
@@ -75,7 +78,7 @@ int dsyevq3(double A[3][3], double Q[3][3], double w[3])
       }
       if (m == l)
         break;
-      
+
       if (nIter++ >= 30)
         return -1;
 
@@ -107,7 +110,7 @@ int dsyevq3(double A[3][3], double Q[3][3], double w[3])
           e[i+1] = g * r;
           s     *= (c = 1.0/r);
         }
-        
+
         g = w[i+1] - p;
         r = (w[i] - g)*s + 2.0*c*b;
         p = s * r;
@@ -122,7 +125,7 @@ int dsyevq3(double A[3][3], double Q[3][3], double w[3])
           Q[k][i+1] = s*Q[k][i] + c*t;
           Q[k][i]   = c*Q[k][i] - s*t;
         }
-#endif 
+#endif
       }
       w[l] -= p;
       e[l]  = g;
@@ -132,4 +135,3 @@ int dsyevq3(double A[3][3], double Q[3][3], double w[3])
 
   return 0;
 }
-

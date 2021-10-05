@@ -16,16 +16,19 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 // ----------------------------------------------------------------------------
+#pragma once
+
 #include <stdio.h>
 #include <math.h>
 #include "dsytrd3.h"
 
 // Macros
-#define SQR(x)      ((x)*(x))                        // x^2 
+#define SQR(x)      ((x)*(x))                        // x^2
 
 
 // ----------------------------------------------------------------------------
-void dsytrd3(double A[3][3], double Q[3][3], double d[3], double e[2])
+template <class T>
+void dsytrd3(T A[3][3], T Q[3][3], T d[3], T e[2])
 // ----------------------------------------------------------------------------
 // Reduces a symmetric 3x3 matrix to tridiagonal form by applying
 // (unitary) Householder transformations:
@@ -37,10 +40,10 @@ void dsytrd3(double A[3][3], double Q[3][3], double d[3], double e[2])
 // ---------------------------------------------------------------------------
 {
   const int n = 3;
-  double u[n], q[n];
-  double omega, f;
-  double K, h, g;
-  
+  T u[n], q[n];
+  T omega, f;
+  T K, h, g;
+
   // Initialize Q to the identitity matrix
 #ifndef EVALS_ONLY
   for (int i=0; i < n; i++)
@@ -51,7 +54,7 @@ void dsytrd3(double A[3][3], double Q[3][3], double d[3], double e[2])
   }
 #endif
 
-  // Bring first row and column to the desired form 
+  // Bring first row and column to the desired form
   h = SQR(A[0][1]) + SQR(A[0][2]);
   if (A[0][1] > 0)
     g = -sqrt(h);
@@ -61,7 +64,7 @@ void dsytrd3(double A[3][3], double Q[3][3], double d[3], double e[2])
   f    = g * A[0][1];
   u[1] = A[0][1] - g;
   u[2] = A[0][2];
-  
+
   omega = h - f;
   if (omega > 0.0)
   {
@@ -77,11 +80,11 @@ void dsytrd3(double A[3][3], double Q[3][3], double d[3], double e[2])
 
     for (int i=1; i < n; i++)
       q[i] = q[i] - K * u[i];
-    
+
     d[0] = A[0][0];
     d[1] = A[1][1] - 2.0*q[1]*u[1];
     d[2] = A[2][2] - 2.0*q[2]*u[2];
-    
+
     // Store inverse Householder transformation in Q
 #ifndef EVALS_ONLY
     for (int j=1; j < n; j++)
@@ -102,4 +105,3 @@ void dsytrd3(double A[3][3], double Q[3][3], double d[3], double e[2])
     e[1] = A[1][2];
   }
 }
-

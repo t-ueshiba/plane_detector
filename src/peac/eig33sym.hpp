@@ -32,7 +32,7 @@
 //#define USE_DSYEVH3
 //
 #ifdef USE_DSYEVH3
-	#include "../dsyevh3C/dsyevh3.h"
+	#include "dsyevh3/dsyevh3.h"
 #else
 	#include <Eigen/Core>
 	#include <Eigen/Dense>

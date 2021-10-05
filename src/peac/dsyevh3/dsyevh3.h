@@ -16,6 +16,8 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 // ----------------------------------------------------------------------------
+#pragma once
+
 #include <stdio.h>
 #include <math.h>
 #include <complex.h>
@@ -25,10 +27,11 @@
 #include "dsyevh3.h"
 
 // Macros
-#define SQR(x)      ((x)*(x))                        // x^2 
+#define SQR(x)      ((x)*(x))                        // x^2
 
 // ----------------------------------------------------------------------------
-int dsyevh3(double A[3][3], double Q[3][3], double w[3])
+template <class T> int
+dsyevh3(T A[3][3], T Q[3][3], T w[3])
 // ----------------------------------------------------------------------------
 // Calculates the eigenvalues and normalized eigenvectors of a symmetric 3x3
 // matrix A using Cardano's method for the eigenvalues and an analytical
@@ -56,10 +59,10 @@ int dsyevh3(double A[3][3], double Q[3][3], double w[3])
 // ----------------------------------------------------------------------------
 {
 #ifndef EVALS_ONLY
-  double norm;          // Squared norm or inverse norm of current eigenvector
-//  double n0, n1;        // Norm of first and second columns of A
-  double error;         // Estimated maximum roundoff error
-  double t, u;          // Intermediate storage
+  T norm;          // Squared norm or inverse norm of current eigenvector
+//  T n0, n1;        // Norm of first and second columns of A
+  T error;         // Estimated maximum roundoff error
+  T t, u;          // Intermediate storage
   int j;                // Loop counter
 #endif
 
@@ -69,7 +72,7 @@ int dsyevh3(double A[3][3], double Q[3][3], double w[3])
 #ifndef EVALS_ONLY
 //  n0 = SQR(A[0][0]) + SQR(A[0][1]) + SQR(A[0][2]);
 //  n1 = SQR(A[0][1]) + SQR(A[1][1]) + SQR(A[1][2]);
-  
+
   t = fabs(w[0]);
   if ((u=fabs(w[1])) > t)
     t = u;
@@ -107,7 +110,7 @@ int dsyevh3(double A[3][3], double Q[3][3], double w[3])
     for (j=0; j < 3; j++)
       Q[j][0] = Q[j][0] * norm;
   }
-  
+
   // Calculate second eigenvector by the formula
   //   v[1] = (A - w[1]).e1 x (A - w[1]).e2
   Q[0][1]  = Q[0][1] + A[0][2]*w[1];
@@ -122,7 +125,7 @@ int dsyevh3(double A[3][3], double Q[3][3], double w[3])
     for (j=0; j < 3; j++)
       Q[j][1] = Q[j][1] * norm;
   }
-  
+
   // Calculate third eigenvector according to
   //   v[2] = v[0] x v[1]
   Q[0][2] = Q[1][0]*Q[2][1] - Q[2][0]*Q[1][1];
@@ -132,4 +135,3 @@ int dsyevh3(double A[3][3], double Q[3][3], double w[3])
 
   return 0;
 }
-

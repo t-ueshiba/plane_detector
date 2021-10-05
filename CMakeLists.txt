@@ -43,10 +43,6 @@ catkin_package(
 add_executable(${PROJECT_NAME}
   src/main.cpp
   src/Detector.cpp
-  src/dsyevh3C/dsyevc3.c
-  src/dsyevh3C/dsyevh3.c
-  src/dsyevh3C/dsyevq3.c
-  src/dsyevh3C/dsytrd3.c
 )
 
 add_dependencies(${PROJECT_NAME}
