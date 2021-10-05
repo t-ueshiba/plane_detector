@@ -27,7 +27,7 @@
 #pragma once
 
 #include <set>			//PlaneSeg::NbSet
-#include <vector>		//mseseq
+#include <vector>		//_mseseq
 #include <limits>		//quiet_NaN
 
 #include "AHCTypes.hpp"		//shared_ptr
@@ -59,6 +59,7 @@ class PlaneSeg
     using shared_ptr	= ahc::shared_ptr<PlaneSeg>;
     using param_set_t	= ParamSet<T>;
 
+  private:
   /**
    *  \brief	An internal struct holding this PlaneSeg's member points'
    *		1st and 2nd order statistics
@@ -212,81 +213,79 @@ class PlaneSeg
 		}
     };
 
-
-    void	update()
-		{
-		    this->stats.compute(this->_center, this->_normal,
-					this->mse, this->curvature);
-		}
-
+  public:
   /**
    *  \brief construct a PlaneSeg during graph initialization
    *
-   *  \param [in] points organized point cloud adapter, see NullImage3D
-   *  \param [in] root_block_id initial window/block's id
-   *  \param [in] seed_row row index of the upper left pixel of the initial window/block
-   *  \param [in] seed_col row index of the upper left pixel of the initial window/block
-   *  \param [in] imgWidth width of the organized point cloud
-   *  \param [in] imgHeight height of the organized point cloud
-   *  \param [in] winWidth width of the initial window/block
-   *  \param [in] winHeight height of the initial window/block
-   *  \param [in] depthChangeFactor parameter to determine depth discontinuity
+   *  \param points		[in] organized point cloud adapter,
+   *				see NullImage3D
+   *  \param root_block_id	[in] initial window/block's id
+   *  \param seed_row		[in] row index of the upper left pixel
+   *				of the initial window/block
+   *  \param seed_col		[in] row index of the upper left pixel
+   *				of the initial window/block
+   *  \param imgWidth		[in] width of the organized point cloud
+   *  \param imgHeight		[in] height of the organized point cloud
+   *  \param winWidth		[in] width of the initial window/block
+   *  \param winHeight		[in] height of the initial window/block
+   *  \param depthChangeFactor	[in] parameter to determine depth discontinuity
    *
    *  \details if exist depth discontinuity in this initial PlaneSeg, nouse will be set true and N 0.
    */
-    template<class Image3D>
-    PlaneSeg(const Image3D& points, const int root_block_id,
-	     const int seed_row, const int seed_col,
-	     const int imgWidth, const int imgHeight,
-	     const int winWidth, const int winHeight,
-	     const param_set_t& params)
+    template<class CLOUD>
+    PlaneSeg(const CLOUD& points, int root_block_id,
+	     int seed_row, int seed_col, int imgWidth, int imgHeight,
+	     int winWidth, int winHeight, const param_set_t& params)
     {
       //assert(0<=seed_row && seed_row<height && 0<=seed_col && seed_col<width && winW>0 && winH>0);
 	this->rid = root_block_id;
 
-	bool windowValid=true;
-	int nanCnt=0, nanCntTh=winHeight*winWidth/2;
-      //calc stats
-	for (int i=seed_row, icnt=0; icnt<winHeight && i<imgHeight;
+	bool	windowValid = true;
+	int	nanCnt = 0, nanCntTh = winHeight*winWidth/2;
+      //calc _stats
+	for (int i=seed_row, icnt=0; icnt < winHeight && i < imgHeight;
 	     ++i, ++icnt)
 	{
-	    for (int j=seed_col, jcnt=0; jcnt<winWidth && j<imgWidth;
+	    for (int j=seed_col, jcnt=0; jcnt < winWidth && j < imgWidth;
 		 ++j, ++jcnt)
 	    {
 		T	x = 0, y = 0, z = 10000;
-		if (!points.get(i,j,x,y,z))
+		if (!points.get(i, j, x, y, z))
 		{
 		    if (params.initType() == param_set_t::INIT_LOOSE)
 		    {
 			++nanCnt;
-			if (nanCnt<nanCntTh) continue;
+			if (nanCnt < nanCntTh)
+			    continue;
 		    }
 #ifdef DEBUG_INIT
-		    this->type=TYPE_MISSING_DATA;
+		    _type = TYPE_MISSING_DATA;
 #endif
 		    windowValid=false;
 		    break;
 		}
-		T xn=0,yn=0,zn=10000;
-		if (j+1<imgWidth && (points.get(i,j+1,xn,yn,zn)
-				    && depthDisContinuous(z,zn,params)))
+		T	xn = 0, yn = 0, zn = 10000;
+		if (j + 1 < imgWidth &&
+		    points.get(i, j+1, xn, yn, zn) &&
+		    depthDisContinuous(z, zn, params))
 		{
 #ifdef DEBUG_INIT
-		    this->type=TYPE_DEPTH_DISCONTINUE;
+		    _type = TYPE_DEPTH_DISCONTINUE;
 #endif
 		    windowValid=false;
 		    break;
 		}
-		if (i+1<imgHeight && (points.get(i+1,j,xn,yn,zn)
-				     && depthDisContinuous(z,zn,params)))
+		if (i + 1 < imgHeight &&
+		    points.get(i + 1, j, xn, yn, zn) &&
+		    depthDisContinuous(z,zn,params))
 		{
 #ifdef DEBUG_INIT
-		    this->type=TYPE_DEPTH_DISCONTINUE;
+		    _type = TYPE_DEPTH_DISCONTINUE;
 #endif
-		    windowValid=false;
+		    windowValid = false;
 		    break;
 		}
-		this->stats.push(x, y, z);
+		_stats.push(x, y, z);
 	    }
 	    if (!windowValid)
 		break;
@@ -295,78 +294,83 @@ class PlaneSeg
 	if (windowValid)
 	{//if nan or depth-discontinuity shows, this obj will be rejected
 	    this->nouse=false;
-	    this->N=this->stats.N;
+	    this->N=_stats.N;
 #ifdef DEBUG_INIT
-	    this->type=TYPE_NORMAL;
+	    _type = TYPE_NORMAL;
 #endif
 	}
 	else
 	{
 	    this->N=0;
-	    this->stats.clear();
+	    _stats.clear();
 	    this->nouse=true;
 	}
 
 	if (this->N<4)
 	{
-	    this->mse=this->curvature=std::numeric_limits<T>::quiet_NaN();
+	    this->mse = _curvature = std::numeric_limits<T>::quiet_NaN();
 	}
 	else
 	{
-	    this->stats.compute(this->_center, this->_normal, this->mse, this->curvature);
+	    _stats.compute(_center, _normal, this->mse, _curvature);
 #ifdef DEBUG_CALC
-	    this->mseseq.push_back(cv::Vec2d(this->N,this->mse));
+	    _mseseq.push_back(cv::Vec2d(this->N,this->mse));
 #endif
 	  //nbs information to be maintained outside the class
 	  //typically when initializing the graph structure
 	}
 #if defined(DEBUG_INIT) || defined(DEBUG_CLUSTER)
-	const uchar clx=uchar((this->_normal[0]+1.0)*0.5*255.0);
-	const uchar cly=uchar((this->_normal[1]+1.0)*0.5*255.0);
-	const uchar clz=uchar((this->_normal[2]+1.0)*0.5*255.0);
-	this->_normalClr=cv::Vec3b(clx,cly,clz);
-	this->clr=cv::Vec3b(rand()%255,rand()%255,rand()%255);
+	_normalClr	= cv::Vec3b(uchar((_normal[0] + 1.0) * 0.5 * 255.0),
+				    uchar((_normal[1] + 1.0) * 0.5 * 255.0),
+				    uchar((_normal[2] + 1.0) * 0.5 * 255.0));
+	_clr		= cv::Vec3b(rand() % 255, rand() % 255, rand() % 255);
 #endif
-      //std::cout<<this->curvature<<std::endl;
+      //std::cout<<_curvature<<std::endl;
     }
 
   /**
-   *  \brief construct a new PlaneSeg from two PlaneSeg pa and pb when trying to merge
+   *  \brief	construct a new PlaneSeg from two PlaneSeg pa and pb
+   *		when trying to merge
    *
-   *  \param [in] pa a PlaneSeg
-   *  \param [in] pb a PlaneSeg
+   *  \param pa	[in] a PlaneSeg
+   *  \param pb	[in] a PlaneSeg
    */
     PlaneSeg(const PlaneSeg& pa, const PlaneSeg& pb)
-	: stats(pa.stats, pb.stats)
+	:_stats(pa._stats, pb._stats)
     {
 #ifdef DEBUG_INIT
-	this->type=TYPE_NORMAL;
+	_type = TYPE_NORMAL;
 #endif
 	this->nouse=false;
 	this->rid = pa.N>=pb.N ? pa.rid : pb.rid;
-	this->N=this->stats.N;
+	this->N=_stats.N;
 
       //ds.union(pa.rid, pb.rid) will be called later
       //in mergeNbsFrom(pa,pb) function, since
       //this object might not be accepted into the graph structure
 
-	this->stats.compute(this->_center, this->_normal, this->mse, this->curvature);
+	_stats.compute(_center, _normal, this->mse, _curvature);
 
 #if defined(DEBUG_CLUSTER)
-	const uchar clx=uchar((this->_normal[0]+1.0)*0.5*255.0);
-	const uchar cly=uchar((this->_normal[1]+1.0)*0.5*255.0);
-	const uchar clz=uchar((this->_normal[2]+1.0)*0.5*255.0);
-	this->_normalClr=cv::Vec3b(clx,cly,clz);
-	this->clr=cv::Vec3b(rand()%255,rand()%255,rand()%255);
+	_normalClr = cv::Vec3b(uchar((_normal[0] + 1.0) * 0.5 * 255.0),
+			       uchar((_normal[1] + 1.0) * 0.5 * 255.0),
+			       uchar((_normal[2] + 1.0) * 0.5 * 255.0));
+	_clr	   = cv::Vec3b(rand() % 255, rand() % 255, rand() % 255);
 #endif
       //nbs information to be maintained later if this node is accepted
     }
+
+    void	update()
+		{
+		    _stats.compute(_center, _normal,
+				   this->mse, _curvature);
+		}
 
   /**
    *  \brief similarity of two plane normals
    *
    *  \param [in] p another PlaneSeg
-   *  \return abs(dot(this->_normal, p->_normal))
+   *  \return abs(dot(_normal, p->_normal))
    *
    *  \details 1 means identical, 0 means perpendicular
    */
@@ -410,7 +414,7 @@ class PlaneSeg
 		{
 		    for (auto nb : _nbs)
 			if (!nb->_nbs.erase(this))
-			    std::cout << "[PlaneSeg warn] this->_nbs._nbs"
+			    std::cout << "[PlaneSeg warn] _nbs._nbs"
 				" should have contained this!"
 				      << std::endl;
 		    _nbs.clear();
@@ -448,51 +452,53 @@ class PlaneSeg
 #ifdef DEBUG_CALC
 		    if (pa.N >= pb.N)
 		    {
-			this->mseseq.swap(pa.mseseq);
+			_mseseq.swap(pa._mseseq);
 		    }
 		    else
 		    {
-			this->mseseq.swap(pb.mseseq);
+			_mseseq.swap(pb._mseseq);
 		    }
-		    this->mseseq.push_back(cv::Vec2d(this->N,this->mse));
+		    _mseseq.push_back(cv::Vec2d(this->N,this->mse));
 #endif
 		}
 
-  public:
-    Stats	stats;		//member points' 1st & 2nd order statistics
-    int		rid;		//root block id
-    T		mse;		//mean square error
-    T		_center[3]; 	//q: plane center (center of mass)
-    T		_normal[3]; 	//n: plane equation n'p=q
-    int		N;		//#member points, same as stats.N
-    T		curvature;
-    bool	nouse;		//this PlaneSeg will be marked as nouse after merged with others to produce a new PlaneSeg node in the graph
-
-#ifdef DEBUG_INIT
-    enum Type	{TYPE_NORMAL=0,				//default value
-		 TYPE_MISSING_DATA=1,
-		 TYPE_DEPTH_DISCONTINUE=2} type;
+  private:
+    Stats	_stats;		//member points' 1st & 2nd order statistics
+    T		_curvature;
+#ifdef DEBUG_CALC
+    std::vector<cv::Vec2d>	_mseseq;
 #endif
+#ifdef DEBUG_INIT
+    enum Type
+    {
+	TYPE_NORMAL		= 0,	//default value
+	TYPE_MISSING_DATA	= 1,
+	TYPE_DEPTH_DISCONTINUE	= 2
+    };
 
+    Type	_type;
+#endif
 #if defined(DEBUG_INIT) || defined(DEBUG_CLUSTER)
-    cv::Vec3b	clr;
-    cv::Vec3b	normalClr;
+    cv::Vec3b	_clr;
+    cv::Vec3b	_normalClr;
 
     cv::Vec3b&	getColor(bool useNormal=true)
 		{
 		    if (useNormal)
-			return normalClr;
-		    return clr;
+			return _normalClr;
+		    return _clr;
 		}
 #endif
 
-#ifdef DEBUG_CALC
-    std::vector<cv::Vec2d>	mseseq;
-#endif
-    using NbSet = std::set<Ptr>;	//no ownership of its content
-    using iterator_t	= typename NbSet::iterator;
+  public:
+    int		rid;		//root block id
+    T		mse;		//mean square error
+    T		_center[3]; 	//q: plane center (center of mass)
+    T		_normal[3]; 	//n: plane equation n'p=q
+    int		N;		//#member points, same as _stats.N
+    bool	nouse;		//this PlaneSeg will be marked as nouse after merged with others to produce a new PlaneSeg node in the graph
 
-    NbSet	_nbs;	//neighbors, i.e. adjacency list for a graph structure
+    std::set<Ptr>	_nbs;	//neighbors, i.e. adjacency list for a graph structure
 };//PlaneSeg
 
 }//ahc

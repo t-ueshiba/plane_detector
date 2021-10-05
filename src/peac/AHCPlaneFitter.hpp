@@ -92,7 +92,6 @@ struct PlaneFitter
     using plane_seg_t	= PlaneSeg<value_t>;
     using plane_seg_p	= typename plane_seg_t::Ptr;
     using plane_seg_sp	= typename plane_seg_t::shared_ptr;
-    using nbs_t		= typename plane_seg_t::NbSet;
     using param_set_t	= ParamSet<value_t>;
 
   /************************************************************************/
@@ -1115,7 +1114,8 @@ struct PlaneFitter
 	{
 	  //this->plotSegmentImage(&dSeg, 0);
 	    std::stringstream ss;
-	    ss<<saveDir<<"/output/cluster_"<<std::setw(5)<<std::setfill('0')<<dSegCnt<<".png";
+	    ss << saveDir << "/output/cluster_"
+	       << std::setw(5) << std::setfill('0') << dSegCnt << ".png";
 	    cv::imwrite(ss.str(), dSeg);
 	    cv::namedWindow("debug ahCluster");
 	    cv::imshow("debug ahCluster", dSeg);
@@ -1123,7 +1123,7 @@ struct PlaneFitter
 	}
 #endif
 	int step=0;
-	while (!minQ.empty() && step<=maxStep)
+	while (!minQ.empty() && step <= maxStep)
 	{
 	    plane_seg_sp p=minQ.top();
 	    minQ.pop();
@@ -1151,22 +1151,20 @@ struct PlaneFitter
 		cv::circle(dGraph, cv::Point(cx,cy),3,blackColor,2);
 	    }
 #endif
-	    plane_seg_sp cand_merge;
-	    plane_seg_p cand_nb(0);
-	    typename nbs_t::iterator itr=p->_nbs.begin();
-	    for (; itr!=p->_nbs.end();itr++)
+	    plane_seg_sp	cand_merge;
+	    plane_seg_p		cand_nb(0);
+	    for (auto nb : p->_nbs)
 	    {//test merge with all nbs, pick the one with min mse
-		plane_seg_p nb=(*itr);
 #ifdef DEBUG_CLUSTER
 		{
-		    const int n_blkid=nb->rid;
+		    const auto	n_blkid = nb->rid;
 		    this->floodFillColor(n_blkid, dGraph, nb->getColor(false));
 		}
 #endif
 	      //TODO: should we use dynamic similarityTh here?
 	      //const value_t similarityTh=ahc::depthDependNormalDeviationTh(p->_center[2],500,4000,M_PI*15/180.0,M_PI/2);
 		if (p->normalSimilarity(*nb) <
-		   params.T_ang(param_set_t::P_MERGING, p->_center[2]))
+		    params.T_ang(param_set_t::P_MERGING, p->_center[2]))
 		    continue;
 		plane_seg_sp merge(new plane_seg_t(*p, *nb));
 		if (cand_merge==0 || cand_merge->mse>merge->mse ||
@@ -1177,24 +1175,24 @@ struct PlaneFitter
 		}
 	    }//for nbs
 #ifdef DEBUG_CLUSTER
-	    itr=p->_nbs.begin();
-	    for (; debug && itr!=p->_nbs.end();itr++)
-	    {
-		plane_seg_p nb=(*itr);
-		const int n_blkid=nb->rid;
-		const int i=n_blkid/Nw;
-		const int j=n_blkid-i*Nw;
-		const int mx=j*windowWidth+0.5*(windowWidth-1);
-		const int my=i*windowHeight+0.5*(windowHeight-1);
-		static const cv::Scalar blackColor(0,0,255,1);
-		cv::circle(dGraph, cv::Point(mx,my),3,blackColor,1);
-		cv::line(dGraph, cv::Point(cx,cy), cv::Point(mx,my), blackColor,1);
-	    }//for nbs
+	    if (debug)
+		for (auto nb : p->_nbs)
+		{
+		    const int n_blkid=nb->rid;
+		    const int i=n_blkid/Nw;
+		    const int j=n_blkid-i*Nw;
+		    const int mx=j*windowWidth+0.5*(windowWidth-1);
+		    const int my=i*windowHeight+0.5*(windowHeight-1);
+		    static const cv::Scalar blackColor(0,0,255,1);
+		    cv::circle(dGraph, cv::Point(mx,my),3,blackColor,1);
+		    cv::line(dGraph, cv::Point(cx,cy), cv::Point(mx,my),
+			     blackColor,1);
+		}//for nbs
 #endif
 	  //TODO: maybe a better merge condition? such as adaptive threshold on MSE like Falzenszwalb's method
 	    if (cand_merge!=0 &&
-	       cand_merge->mse<params.T_mse(param_set_t::P_MERGING,
-					    cand_merge->_center[2]))
+		cand_merge->mse<params.T_mse(param_set_t::P_MERGING,
+					     cand_merge->_center[2]))
 	    {//merge and add back to minQ
 #ifdef DEBUG_CLUSTER
 		{
@@ -1333,7 +1331,8 @@ struct PlaneFitter
 #ifdef DEBUG_CLUSTER
 	{
 	    std::stringstream ss;
-	    ss<<saveDir<<"/output/cluster_"<<std::setw(5)<<std::setfill('0')<<(++dSegCnt)<<".png";
+	    ss << saveDir << "/output/cluster_"
+	       << std::setw(5) << std::setfill('0') << (++dSegCnt) << ".png";
 	    cv::imwrite(ss.str(), dSeg);
 	    exit(-1);
 	}
