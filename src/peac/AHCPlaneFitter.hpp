@@ -49,33 +49,6 @@ namespace ahc
 using ahc::utils::Timer;
 using ahc::utils::pseudocolor;
 
-/**
- *  \brief An example of Image3D struct as an adaptor for any kind of point cloud to be used by our ahc::PlaneFitter
- *
- *  \details A valid Image3D struct should implements the following three member functions:
- *  1. int width()
- *     return the #pixels for each row of the point cloud
- *  2. int height()
- *     return the #pixels for each column of the point cloud
- *  3. bool get(const int i, const int j, double &x, double &y, double &z) const
- *     access the xyz coordinate of the point at i-th-row j-th-column, return true if success and false otherwise (due to NaN depth or any other reasons)
- */
-template <class T>
-struct NullImage3D
-{
-    int		width()				    const { return 0; }
-    int		height()			    const { return 0; }
-  //get point at row i, column j
-    bool	get(int i, int j, T& x, T& y, T& z) const { return false; }
-};
-
-//three types of erode operation for segmentation refinement
-enum ErodeType
-{
-    ERODE_NONE=0,		//no erode
-    ERODE_SEG_BORDER=1,	//erode only borders between two segments
-    ERODE_ALL_BORDER=2	//erode all borders, either between two segments or between segment and "black"
-};
 
 /**
  *  \brief ahc::PlaneFitter implements the Agglomerative Hierarchical Clustering based fast plane extraction
@@ -85,6 +58,15 @@ enum ErodeType
 template <class CLOUD>
 class PlaneFitter
 {
+  public:
+  //three types of erode operation for segmentation refinement
+    enum ErodeType
+    {
+	ERODE_NONE	 = 0,	//no erode
+	ERODE_SEG_BORDER = 1,	//erode only borders between two segments
+	ERODE_ALL_BORDER = 2	//erode all borders, either between two segments or between segment and "black"
+    };
+
   private:
     using value_t	= typename CLOUD::value_t;
     using plane_seg_t	= PlaneSeg<value_t>;
@@ -111,11 +93,17 @@ class PlaneFitter
   /* Public Class Functions                                               */
   /************************************************************************/
     PlaneFitter()
-	: _cloud(0), _width(0), _height(0),
-	  _maxStep(100000), _minSupport(3000),
-	  _winWidth(10), _winHeight(10),
-	  _doRefine(true), _erodeType(ERODE_ALL_BORDER),
-	  _dirtyBlkMbship(true), _drawCoarseBorder(false)
+	: _cloud(nullptr),
+	  _width(0),
+	  _height(0),
+	  _maxStep(100000),
+	  _minSupport(3000),
+	  _winWidth(10),
+	  _winHeight(10),
+	  _doRefine(true),
+	  _erodeType(ERODE_ALL_BORDER),
+	  _dirtyBlkMbship(true),
+	  _drawCoarseBorder(false)
     {
 	static const unsigned char	default_colors[10][3] =
 					{
@@ -130,13 +118,13 @@ class PlaneFitter
 					    {255, 0, 128},
 					    {60, 128, 128}
 					};
-	for (int i=0; i<10; ++i)
+	for (int i = 0; i < 10; ++i)
 	{
 	    _colors.push_back(cv::Vec3b(default_colors[i]));
 	}
     }
 
-    ~PlaneFitter() {}
+    ~PlaneFitter()						{}
 
   /**
    *  \brief clear/reset for next run
@@ -144,14 +132,13 @@ class PlaneFitter
     void
     clear()
     {
-	_cloud=0;
+	_cloud = nullptr;
 	_extractedPlanes.clear();
 	_ds.reset();
 	_rid2plid.clear();
 	_blkMap.clear();
 	_rfQueue.clear();
-      //blkStats.clear();
-	_dirtyBlkMbship=true;
+	_dirtyBlkMbship = true;
     }
 
   /**
@@ -168,29 +155,29 @@ class PlaneFitter
    */
     value_t
     run(const CLOUD*			cloud,
-	std::vector<std::vector<int>>*	pMembership=0,
-	cv::Mat*			pSeg=0,
-	const std::vector<int>* const	pIdxMap=0,
+	std::vector<std::vector<int>>*	pMembership=nullptr,
+	cv::Mat*			pSeg=nullptr,
+	const std::vector<int>* const	pIdxMap=nullptr,
 	bool				verbose=true)
     {
 	if (!cloud)
 	    return 0;
 #ifdef EVAL_SPEED
-	Timer timer(1000), timer2(1000);
+	Timer	timer(1000), timer2(1000);
 	timer.tic(); timer2.tic();
 #endif
 	clear();
-	_cloud = cloud;
+	_cloud  = cloud;
 	_height = _cloud->height();
 	_width  = _cloud->width();
 	_ds.reset(new DisjointSet((_height/_winHeight)*(_width/_winWidth)));
 
-	PlaneSegMinMSEQueue minQ;
+	PlaneSegMinMSEQueue	minQ;
 	initGraph(minQ);
 #ifdef EVAL_SPEED
 	timer.toctic("init time");
 #endif
-	int step=ahCluster(minQ);
+	const auto	step = ahCluster(minQ);
 #ifdef EVAL_SPEED
 	timer.toctic("cluster time");
 #endif
@@ -263,31 +250,33 @@ class PlaneFitter
    *  \details this function corresponds to Algorithm 4 in our paper; note: plane parameters of each _extractedPlanes in the PlaneSeg is NOT updated after this call since the new points added from region grow and points removed from block erosion are not properly reflected in the PlaneSeg
    */
     void
-    refineDetails(std::vector<std::vector<int>> *pMembership, //pMembership->size()==nPlanes
-		  const std::vector<int> * const pIdxMap, //if pIdxMap!=0 pMembership->at(i).at(j)=pIdxMap(pixIdx)
+    refineDetails(std::vector<std::vector<int>>* pMembership, //pMembership->size()==nPlanes
+		  const std::vector<int>* const pIdxMap, //if pIdxMap!=0 pMembership->at(i).at(j)=pIdxMap(pixIdx)
 		  cv::Mat* pSeg)
     {
-	if (pMembership==0 && pSeg==0) return;
-	std::vector<bool> isValidExtractedPlane; //some planes might be eroded completely
+	if (!pMembership && !pSeg)
+	    return;
+
+	std::vector<bool>	isValidExtractedPlane; //some planes might be eroded completely
 	findBlockMembership(isValidExtractedPlane);
 
       //save the border regions
-	std::vector<int> border;
+	std::vector<int>	border;
 	if (_drawCoarseBorder && pSeg)
 	{
 	    border.resize(_rfQueue.size());
-	    for (int i=0; i<(int)_rfQueue.size(); ++i)
+	    for (int i = 0; i < (int)_rfQueue.size(); ++i)
 	    {
-		border[i]=_rfQueue[i].first;
+		border[i] = _rfQueue[i].first;
 	    }
 	}
 
 	floodFill();
 
       //try to merge one last time
-	std::vector<plane_seg_sp> oldExtractedPlanes;
+	std::vector<plane_seg_sp>	oldExtractedPlanes;
 	_extractedPlanes.swap(oldExtractedPlanes);
-	PlaneSegMinMSEQueue minQ;
+	PlaneSegMinMSEQueue		minQ;
 	for (int i = 0; i < (int)oldExtractedPlanes.size(); ++i)
 	{
 	    if (isValidExtractedPlane[i])
@@ -296,72 +285,77 @@ class PlaneFitter
 	ahCluster(minQ, false);
 
       //find plane idx maping from oldExtractedPlanes to final _extractedPlanes
-	std::vector<int> plidmap(oldExtractedPlanes.size(),-1);
-	int nFinalPlanes=0;
-	for (int i=0; i<(int)oldExtractedPlanes.size(); ++i)
+	std::vector<int>	plidmap(oldExtractedPlanes.size(), -1);
+	int			nFinalPlanes = 0;
+	for (int i = 0; i < (int)oldExtractedPlanes.size(); ++i)
 	{
-	    const plane_seg_t& op=*oldExtractedPlanes[i];
 	    if (!isValidExtractedPlane[i])
 	    {
-		plidmap[i]=-1;//this plane was eroded
+		plidmap[i] = -1;//this plane was eroded
 		continue;
 	    }
-	    int np_rid;
-	    if ((np_rid = _ds->Find(op._rid)) == op._rid)
+
+	    const auto&	op     = *oldExtractedPlanes[i];
+	    const auto	np_rid = _ds->Find(op._rid);
+	    if (np_rid == op._rid)
 	    {//op is not changed
-		if (plidmap[i]<0) //if not updated, otherwise was updated before
-		    plidmap[i]=nFinalPlanes++;
+		if (plidmap[i] < 0) //if not updated, otherwise was updated before
+		    plidmap[i] = nFinalPlanes++;
 	    }
 	    else
 	    {//op is merged to np
-		const int npid=_rid2plid[np_rid];
-		if (plidmap[npid]<0) //if np's idmap not updated
-		    plidmap[i]=plidmap[npid]=nFinalPlanes++;
+		const auto	npid = _rid2plid[np_rid];
+		if (plidmap[npid] < 0) //if np's idmap not updated
+		    plidmap[i] = plidmap[npid] = nFinalPlanes++;
 		else
-		    plidmap[i]=plidmap[npid];
+		    plidmap[i] = plidmap[npid];
 	    }
 	}
-	assert(nFinalPlanes==(int)_extractedPlanes.size());
+	assert(nFinalPlanes == (int)_extractedPlanes.size());
 
       //scan _membershipImg
-	if (nFinalPlanes>_colors.size())
+	if (nFinalPlanes > _colors.size())
 	{
-	    std::vector<cv::Vec3b> tmpColors=pseudocolor(nFinalPlanes-(int)_colors.size());
+	    auto	tmpColors = pseudocolor(nFinalPlanes -
+						(int)_colors.size());
 	    _colors.insert(_colors.end(), tmpColors.begin(), tmpColors.end());
 	}
 	if (pMembership)
 	{
 	    pMembership->resize(nFinalPlanes, std::vector<int>());
-	    for (int i=0; i<nFinalPlanes; ++i)
+	    for (int i = 0; i < nFinalPlanes; ++i)
 	    {
 		pMembership->at(i).reserve(
-		    (int)(_extractedPlanes[i]->_N*1.2f));
+		    (int)(_extractedPlanes[i]->_N * 1.2f));
 	    }
 	}
 
-	static const cv::Vec3b blackColor(0,0,0);
-	const int nPixels=_width*_height;
-	for (int i=0; i<nPixels; ++i)
+	static const cv::Vec3b	blackColor(0, 0, 0);
+	const auto		nPixels = _width*_height;
+	for (int i = 0; i < nPixels; ++i)
 	{
-	    int& plid=_membershipImg.at<int>(i);
-	    if (plid>=0 && plidmap[plid]>=0)
+	    auto&	plid=_membershipImg.at<int>(i);
+	    if (plid >= 0 && plidmap[plid] >= 0)
 	    {
-		plid=plidmap[plid];
-		if (pSeg) pSeg->at<cv::Vec3b>(i)=_colors[plid];
-		if (pMembership) pMembership->at(plid).push_back(
-		    pIdxMap?pIdxMap->at(i):i);
+		plid = plidmap[plid];
+		if (pSeg)
+		    pSeg->at<cv::Vec3b>(i) = _colors[plid];
+		if (pMembership)
+		    pMembership->at(plid).push_back(pIdxMap ? pIdxMap->at(i)
+							    : i);
 	    }
 	    else
 	    {
 		if (pSeg)
-		    pSeg->at<cv::Vec3b>(i)=blackColor;
+		    pSeg->at<cv::Vec3b>(i) = blackColor;
 	    }
 	}
 
-	static const cv::Vec3b whiteColor(255,255,255);
-	for (int k=0; pSeg && _drawCoarseBorder && k<(int)border.size(); ++k)
+	static const cv::Vec3b	whiteColor(255, 255, 255);
+	for (int k = 0; pSeg && _drawCoarseBorder && k < (int)border.size();
+	     ++k)
 	{
-	    pSeg->at<cv::Vec3b>(border[k])=whiteColor;
+	    pSeg->at<cv::Vec3b>(border[k]) = whiteColor;
 	}
       //TODO: refine the plane equation as well after!!
     }
@@ -382,16 +376,16 @@ class PlaneFitter
     getValid4Neighbor(const int i, const int j,
 		      const int H, const int W, int nbs[4])
     {
-	const int id=i*W+j;
-	int cnt=0;
-	if (j>0)
-	    nbs[cnt++]=(id-1);		//left
-	if (j<W-1)
-	    nbs[cnt++]=(id+1);		//right
-	if (i>0)
-	    nbs[cnt++]=(id-W);		//up
-	if (i<H-1)
-	    nbs[cnt++]=(id+W);		//down
+	const auto	id  = i*W + j;
+	int		cnt = 0;
+	if (j > 0)
+	    nbs[cnt++] = id - 1;		//left
+	if (j < W - 1)
+	    nbs[cnt++] = id + 1;		//right
+	if (i > 0)
+	    nbs[cnt++] = id - W;		//up
+	if (i < H - 1)
+	    nbs[cnt++] = id + W;		//down
 	return cnt;
     }
 
@@ -405,12 +399,12 @@ class PlaneFitter
     inline int
     getBlockIdx(const int pixX, const int pixY) const
     {
-	assert(pixX>=0 && pixY>=0 && pixX<_width && pixY<_height);
-	const int Nw = _width/_winWidth;
-	const int Nh = _height/_winHeight;
-	const int by = pixY/_winHeight;
-	const int bx = pixX/_winWidth;
-	return (by<Nh && bx<Nw)?(by*Nw+bx):-1;
+	assert(pixX >= 0 && pixY >= 0 && pixX < _width && pixY < _height);
+	const auto	Nw = _width/_winWidth;
+	const auto	Nh = _height/_winHeight;
+	const auto	by = pixY/_winHeight;
+	const auto	bx = pixX/_winWidth;
+	return (by < Nh && bx < Nw) ? (by*Nw + bx) : -1;
     }
 
   /**
@@ -426,16 +420,16 @@ class PlaneFitter
 
 	for (int k=0; k<(int)_rfQueue.size(); ++k)
 	{
-	    const int sIdx=_rfQueue[k].first;
-	    const int seedy=sIdx/_width;
-	    const int seedx=sIdx-seedy*_width;
-	    const int plid=_rfQueue[k].second;
-	    const plane_seg_t& pl = *_extractedPlanes[plid];
+	    const auto	sIdx  = _rfQueue[k].first;
+	    const auto	seedy = sIdx/_width;
+	    const auto	seedx = sIdx-seedy*_width;
+	    const auto	plid  =_rfQueue[k].second;
+	    const auto&	pl    = *_extractedPlanes[plid];
 
-	    int nbs[4]={-1};
-	    const int Nnbs=getValid4Neighbor(seedy, seedx,
-						   _height, _width, nbs);
-	    for (int itr=0; itr<Nnbs; ++itr)
+	    int		nbs[4] = {-1};
+	    const auto	Nnbs=getValid4Neighbor(seedy, seedx,
+					       _height, _width, nbs);
+	    for (int itr = 0; itr < Nnbs; ++itr)
 	    {
 		const int	cIdx  = nbs[itr];
 		int&		trail = _membershipImg.at<int>(cIdx);
@@ -443,41 +437,45 @@ class PlaneFitter
 		    continue; //visited from 4 neighbors already, skip
 		if (trail>=0 && trail==plid)
 		    continue; //if visited by the same plane, skip
-		const int cy=cIdx/_width;
-		const int cx=cIdx-cy*_width;
-		const int blkid=getBlockIdx(cx,cy);
-		if (blkid>=0 && _blkMap[blkid]>=0)
+
+		const auto	cy    = cIdx/_width;
+		const auto	cx    = cIdx-cy*_width;
+		const auto	blkid = getBlockIdx(cx, cy);
+		if (blkid >= 0 && _blkMap[blkid] >= 0)
 		    continue; //not in "black" block
 
-		value_t pt[3]={0};
-		float cdist=-1;
-		if (_cloud->get(cy,cx,pt[0],pt[1],pt[2]) &&
-		   std::pow(cdist=(float)std::abs(pl.signedDist(pt)),2)<9*pl._mse+1e-5) //point-plane distance within 3*std
+		value_t	pt[3] = {0};
+		float	cdist = -1;
+		if (_cloud->get(cy, cx, pt[0], pt[1], pt[2]) &&
+		    std::pow(cdist = float(std::abs(pl.signedDist(pt))), 2)
+		    < 9*pl._mse + 1e-5) //point-plane distance within 3*std
 		{
-		    if (trail>=0)
+		    if (trail >= 0)
 		    {
-			plane_seg_t&	n_pl=*_extractedPlanes[trail];
+			auto&	n_pl = *_extractedPlanes[trail];
 			if (pl.normalSimilarity(n_pl) >=
-			    _params.T_ang(param_set_t::P_REFINE, pl._center[2]))
+			    _params.T_ang(param_set_t::P_REFINE,
+					  pl._center[2]))
 			{//potential for merging
 			    n_pl.connect(_extractedPlanes[plid].get());
 			}
 		    }
-		    float& old_dist=distMap[cIdx];
-		    if (cdist<old_dist)
+		    auto&	old_dist = distMap[cIdx];
+		    if (cdist < old_dist)
 		    {
-			trail=plid;
-			old_dist=cdist;
+			trail	 = plid;
+			old_dist = cdist;
 			_rfQueue.push_back(std::make_pair(cIdx, plid));
 		    }
-		    else if (trail<0)
+		    else if (trail < 0)
 		    {
-			trail-=1;
+			trail -= 1;
 		    }
 		}
 		else
 		{
-		    if (trail<0) trail-=1;
+		    if (trail<0)
+			trail -= 1;
 		}
 	    }
 	}//for _rfQueue
@@ -518,7 +516,7 @@ class PlaneFitter
 		if (setSize>=_minSupport)
 		{//cluster large enough
 		    int		nbs[4] = {-1};
-		    const auto	nNbs = getValid4Neighbor(i,j,Nh,Nw,nbs);
+		    const auto	nNbs = getValid4Neighbor(i, j, Nh, Nw, nbs);
 		    bool	nbClsAllTheSame = true;
 		    for (int k = 0; k < nNbs && _erodeType != ERODE_NONE; ++k)
 		    {
@@ -535,12 +533,12 @@ class PlaneFitter
 		    if (nbClsAllTheSame)
 		    {
 			_blkMap[blkid]=plid;
-			const auto	by=blkid/Nw;
-			const auto	bx=blkid-by*Nw;
-			_membershipImg(cv::Range(by*_winHeight,
-						 (by+1)*_winHeight),
-				       cv::Range(bx*_winWidth,
-						 (bx+1)*_winWidth)).setTo(plid);
+			const auto	by = blkid/Nw;
+			const auto	bx = blkid - by*Nw;
+			_membershipImg(
+			    cv::Range(by*_winHeight, (by + 1)*_winHeight),
+			    cv::Range(bx*_winWidth,  (bx + 1)*_winWidth))
+			    .setTo(plid);
 			isValidExtractedPlane[plid] = true;
 		    }
 		    else
@@ -669,10 +667,10 @@ class PlaneFitter
 		    _blkMap[blkid]=plid;
 		    const auto	by = blkid/Nw;
 		    const auto	bx = blkid - by*Nw;
-		    _membershipImg(cv::Range(by*_winHeight,
-					     (by+1)*_winHeight),
-				   cv::Range(bx*_winWidth,
-					     (bx+1)*_winWidth)).setTo(plid);
+		    _membershipImg(
+			cv::Range(by*_winHeight, (by + 1)*_winHeight),
+			cv::Range(bx*_winWidth,  (bx + 1)*_winWidth))
+			.setTo(plid);
 		}
 		else
 		{//too small cluster, i.e. "black" cluster
@@ -701,9 +699,9 @@ class PlaneFitter
 		const auto	plid = _blkMap[blkid];
 		if (plid < 0)
 		    continue;
-		for (int y = i*_winHeight; y < (i+1)*_winHeight; ++y)
+		for (int y = i*_winHeight; y < (i + 1)*_winHeight; ++y)
 		{
-		    for (int x = j*_winWidth; x < (j+1)*_winWidth; ++x)
+		    for (int x = j*_winWidth; x < (j + 1)*_winWidth; ++x)
 		    {
 			const auto	pixIdx = x + y*_width;
 			ret[plid].push_back(pIdxMap ? pIdxMap->at(pixIdx)
@@ -783,17 +781,15 @@ class PlaneFitter
 		const auto	plid = blkid2plid[blkid];
 		if (plid >= 0)
 		{
-		    seg(cv::Range(i*_winHeight,
-				  (i+1)*_winHeight),
-			cv::Range(j*_winWidth,
-				  (j+1)*_winWidth)).setTo(_colors[plid]);
+		    seg(cv::Range(i*_winHeight, (i + 1)*_winHeight),
+			cv::Range(j*_winWidth,  (j + 1)*_winWidth))
+			.setTo(_colors[plid]);
 		}
 		else
 		{
-		    seg(cv::Range(i*_winHeight,
-				  (i+1)*_winHeight),
-			cv::Range(j*_winWidth,
-				  (j+1)*_winWidth)).setTo(cv::Vec3b(0,0,0));
+		    seg(cv::Range(i*_winHeight, (i + 1)*_winHeight),
+			cv::Range(j*_winWidth,  (j + 1)*_winWidth))
+			.setTo(cv::Vec3b(0,0,0));
 		}
 	    }
 	}
@@ -809,65 +805,68 @@ class PlaneFitter
     void
     initGraph(PlaneSegMinMSEQueue& minQ)
     {
-	const int Nh   = _height/_winHeight;
-	const int Nw   = _width/_winWidth;
+	const auto	Nh = _height/_winHeight;
+	const auto	Nw = _width/_winWidth;
 
       //1. init nodes
-	std::vector<plane_seg_p> G(Nh*Nw,0);
+	std::vector<plane_seg_p>	G(Nh*Nw, 0);
       //blkStats.resize(Nh*Nw);
 
-	for (int i=0; i<Nh; ++i)
+	for (int i = 0; i < Nh; ++i)
 	{
-	    for (int j=0; j<Nw; ++j)
+	    for (int j = 0; j < Nw; ++j)
 	    {
 		plane_seg_sp	p(new plane_seg_t(*_cloud,
-						  (i*Nw+j),
-						  i*_winHeight,
-						  j*_winWidth,
-						  _width,
-						  _height,
-						  _winWidth,
-						  _winHeight,
+						  i*Nw + j,
+						  i*_winHeight, j*_winWidth,
+						  _width,	_height,
+						  _winWidth,    _winHeight,
 						  _params));
 		if (p->_mse<_params.T_mse(param_set_t::P_INIT, p->_center[2])
 		    && !p->_nouse)
 		{
-		    G[i*Nw+j]=p.get();
+		    G[i*Nw+j] = p.get();
 		    minQ.push(p);
 		  //blkStats[i*Nw+j]=p->stats;
 		}
 		else
 		{
-		    G[i*Nw+j]=0;
+		    G[i*Nw+j] = 0;
 		}
 	    }
 	}
 
       //2. init edges
       //first pass, connect neighbors from row direction
-	for (int i=0; i<Nh; ++i)
+	for (int i = 0; i < Nh; ++i)
 	{
-	    for (int j=1; j<Nw; j+=2)
+	    for (int j = 1; j < Nw; j+=2)
 	    {
-		const int cidx=i*Nw+j;
-		if (G[cidx-1]==0)
+		const auto	cidx = i*Nw + j;
+		if (G[cidx - 1] == 0)
 		{
 		    --j;
 		    continue;
 		}
-		if (G[cidx]==0)
+		if (G[cidx] == 0)
 		    continue;
-		if (j<Nw-1 && G[cidx+1]==0)
+		if (j < Nw-1 && G[cidx+1] == 0)
 		{
-		    ++j; continue;
+		    ++j;
+		    continue;
 		}
 
-		const value_t similarityTh=_params.T_ang(param_set_t::P_INIT, G[cidx]->_center[2]);
-		if ((j<Nw-1 && G[cidx-1]->normalSimilarity(*G[cidx+1])>=similarityTh) ||
-		   (j==Nw-1 && G[cidx]->normalSimilarity(*G[cidx-1])>=similarityTh))
+		const auto similarityTh = _params.T_ang(param_set_t::P_INIT,
+							G[cidx]->_center[2]);
+		if ((j < Nw - 1 &&
+		     G[cidx - 1]->normalSimilarity(*G[cidx + 1]) >=
+		     similarityTh) ||
+		   (j == Nw - 1 &&
+		    G[cidx]->normalSimilarity(*G[cidx - 1]) >= similarityTh))
 		{
-		    G[cidx]->connect(G[cidx-1]);
-		    if (j<Nw-1) G[cidx]->connect(G[cidx+1]);
+		    G[cidx]->connect(G[cidx - 1]);
+		    if (j < Nw - 1)
+			G[cidx]->connect(G[cidx + 1]);
 		}
 		else
 		{//otherwise current block is in edge region
@@ -880,7 +879,7 @@ class PlaneFitter
 	{
 	    for (int i = 1; i < Nh; i += 2)
 	    {
-		const int cidx=i*Nw + j;
+		const auto	cidx = i*Nw + j;
 		if (G[cidx-Nw] == 0)
 		{
 		    --i;
@@ -888,23 +887,23 @@ class PlaneFitter
 		}
 		if (G[cidx] == 0)
 		    continue;
-		if (i < Nh-1 && G[cidx+Nw] == 0)
+		if (i < Nh - 1 && G[cidx+Nw] == 0)
 		{
 		    ++i;
 		    continue;
 		}
 
-		const value_t similarityTh=_params.T_ang(param_set_t::P_INIT,
-							 G[cidx]->_center[2]);
+		const auto similarityTh=_params.T_ang(param_set_t::P_INIT,
+						      G[cidx]->_center[2]);
 		if ((i < Nh - 1 &&
-		     G[cidx-Nw]->normalSimilarity(*G[cidx+Nw]) >=
+		     G[cidx - Nw]->normalSimilarity(*G[cidx+Nw]) >=
 		     similarityTh) ||
 		    (i == Nh - 1 &&
 		     G[cidx]->normalSimilarity(*G[cidx-Nw]) >= similarityTh))
 		{
-		    G[cidx]->connect(G[cidx-Nw]);
-		    if (i < Nh-1)
-			G[cidx]->connect(G[cidx+Nw]);
+		    G[cidx]->connect(G[cidx - Nw]);
+		    if (i < Nh - 1)
+			G[cidx]->connect(G[cidx + Nw]);
 		}
 		else
 		{
@@ -926,10 +925,10 @@ class PlaneFitter
     int
     ahCluster(PlaneSegMinMSEQueue& minQ, bool debug=true)
     {
-	int step=0;
+	int step = 0;
 	while (!minQ.empty() && step <= _maxStep)
 	{
-	    plane_seg_sp p=minQ.top();
+	    plane_seg_sp	p = minQ.top();
 	    minQ.pop();
 	    if (p->_nouse)
 	    {
@@ -946,7 +945,7 @@ class PlaneFitter
 		if (p->normalSimilarity(*nb) <
 		    _params.T_ang(param_set_t::P_MERGING, p->_center[2]))
 		    continue;
-		plane_seg_sp merge(new plane_seg_t(*p, *nb));
+		plane_seg_sp	merge(new plane_seg_t(*p, *nb));
 		if (cand_merge == 0 || cand_merge->_mse > merge->_mse ||
 		   (cand_merge->_mse == merge->_mse &&
 		    cand_merge->_N < merge->_mse))
@@ -958,8 +957,8 @@ class PlaneFitter
 
 	  //TODO: maybe a better merge condition? such as adaptive threshold on MSE like Falzenszwalb's method
 	    if (cand_merge!=0 &&
-		cand_merge->_mse<_params.T_mse(param_set_t::P_MERGING,
-					       cand_merge->_center[2]))
+		cand_merge->_mse < _params.T_mse(param_set_t::P_MERGING,
+						 cand_merge->_center[2]))
 	    {//merge and add back to minQ
 		minQ.push(cand_merge);
 		cand_merge->mergeNbsFrom(*p, *cand_nb, *_ds);
