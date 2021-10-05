@@ -42,22 +42,23 @@ enum InitType
 /**
 *  \brief ParamSet is a struct representing a set of parameters used in ahc::PlaneFitter
 */
+template <class T>
 struct ParamSet
 {
   // related to T_mse
-    double depthSigma;		//\sigma in the paper, unit: u^-1 mm^-1
-    double stdTol_init;		//\epsilon in the paper, used when init graph, unit: u mm
-    double stdTol_merge;	//\epsilon in the paper, used when merging nodes, unit: u mm
+    T depthSigma;		//\sigma in the paper, unit: u^-1 mm^-1
+    T stdTol_init;		//\epsilon in the paper, used when init graph, unit: u mm
+    T stdTol_merge;	//\epsilon in the paper, used when merging nodes, unit: u mm
 
   // related to T_ang
-    double z_near, z_far;			//unit: u mm, closest/farthest z to be considered
-    double angle_near, angle_far;	//unit: rad, corresponding normal deviation angle
-    double similarityTh_merge;		//unit: none, 1 means the same, 0 means perpendicular
-    double similarityTh_refine;		//unit: none
+    T z_near, z_far;			//unit: u mm, closest/farthest z to be considered
+    T angle_near, angle_far;	//unit: rad, corresponding normal deviation angle
+    T similarityTh_merge;		//unit: none, 1 means the same, 0 means perpendicular
+    T similarityTh_refine;		//unit: none
 
   // related to T_dz
-    double depthAlpha;	//unit: none, corresponds to the 2*\alpha in the paper
-    double depthChangeTol;		//unit: u mm
+    T depthAlpha;	//unit: none, corresponds to the 2*\alpha in the paper
+    T depthChangeTol;		//unit: u mm
 
     InitType initType;
 
@@ -86,8 +87,8 @@ struct ParamSet
    *
    *  \details Reference: 2012.Sensors.Khoshelham.Accuracy and Resolution of Kinect Depth Data for Indoor Mapping Applications
    */
-    inline double
-    T_mse(const Phase phase, const double z=0) const
+    inline T
+    T_mse(const Phase phase, const T z=0) const
     {
       //theoretical point-plane distance std = sigma * z * z
       //sigma corresponds to \sigma * (m/f/b) in the 2012.Khoshelham paper
@@ -114,17 +115,17 @@ struct ParamSet
    *  and the threshold will be used to reject edge when initialize the graph;
    *  this function corresponds to T_{ANG} in our paper
    */
-    inline double
-    T_ang(const Phase phase, const double z=0) const
+    inline T
+    T_ang(const Phase phase, const T z=0) const
     {
 	switch(phase)
 	{
 	  case P_INIT:
 	  {//linear maping z->thresholding angle, clipping z also
-	      double clipped_z = z;
+	      T clipped_z = z;
 	      clipped_z=std::max(clipped_z,z_near);
 	      clipped_z=std::min(clipped_z,z_far);
-	      const double factor = (angle_far-angle_near)/(z_far-z_near);
+	      const T factor = (angle_far-angle_near)/(z_far-z_near);
 	      return std::cos(factor*clipped_z+angle_near-factor*z_near);
 	  }
 	  case P_MERGING:
@@ -149,8 +150,8 @@ struct ParamSet
    *  essentially returns factor*z+tolerance
    *  (TODO: maybe change this to 3D-point distance threshold)
    */
-    inline double
-    T_dz(const double z) const
+    inline T
+    T_dz(const T z) const
     {
 	return depthAlpha * fabs(z) + depthChangeTol;
     }

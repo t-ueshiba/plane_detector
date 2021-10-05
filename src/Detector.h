@@ -36,6 +36,9 @@ class Detector
     class PointCloud
     {
       public:
+	using value_t	= T;
+
+      public:
 	void	resize(int h, int w)
 		{
 		    _h = h;
@@ -44,7 +47,7 @@ class Detector
 		}
 	auto	height()		const	{ return _h; }
 	auto	width()			const	{ return _w; }
-	bool	get(int v, int u, double& x, double& y, double& z) const
+	bool	get(int v, int u, T& x, T& y, T& z) const
 		{
 		    const auto	i = v * _w + u;
 		    z = _vertices[i][2];

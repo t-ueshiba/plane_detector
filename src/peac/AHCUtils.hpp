@@ -33,8 +33,8 @@ namespace ahc {
 namespace utils {
 
 /**
- *  \brief Generate pseudo-colors 
- *  
+ *  \brief Generate pseudo-colors
+ *
  *  \param [in] ncolors number of colors to be generated (will be reset to 10 if ncolors<=0)
  *  \return a vector of cv::Vec3b
  */
@@ -60,7 +60,7 @@ struct Timer {
 
 	/**
 	constructor
-	
+
 	@param scale time scale, 1 means second, 1000 means milli-second,
 	             1/60.0 means minutes, etc.
 	*/
@@ -71,7 +71,7 @@ struct Timer {
 
 	/**
 	start record time, similar to matlab function "tic";
-	
+
 	@return the start tick
 	*/
 	inline double tic() {
@@ -80,7 +80,7 @@ struct Timer {
 
 	/**
 	return duration from last tic, in (second * scale), similar to matlab function "toc"
-	
+
 	@return duration from last tic,  in (second * scale)
 	*/
 	inline double toc() {
@@ -94,7 +94,7 @@ struct Timer {
 
 	/**
 	equivalent to { toc(); tic(); }
-	
+
 	@return duration from last tic,  in (second * scale)
 	*/
 	inline double toctic() {

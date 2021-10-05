@@ -39,8 +39,8 @@ namespace ahc
 {
 
 //return true if d0 and d1 is discontinuous
-inline static bool
-depthDisContinuous(const double d0, const double d1, const ParamSet& params)
+template <class T> inline static bool
+depthDisContinuous(const T d0, const T d1, const ParamSet<T>& params)
 {
     return fabs(d0-d1) > params.T_dz(d0);
 }
@@ -50,10 +50,12 @@ depthDisContinuous(const double d0, const double d1, const ParamSet& params)
  *
  *  \details It is usually dynamically allocated and garbage collected by boost::shared_ptr
  */
+template <class T>
 struct PlaneSeg
 {
     typedef PlaneSeg* Ptr;
     typedef ahc::shared_ptr<PlaneSeg> shared_ptr;
+    using param_set_t	= ParamSet<T>;
 
   /**
    *  \brief An internal struct holding this PlaneSeg's member points' 1st and 2nd order statistics
@@ -62,7 +64,7 @@ struct PlaneSeg
    */
     struct Stats
     {
-	double	sx, sy, sz, //sum of x/y/z
+	T	sx, sy, sz, //sum of x/y/z
 		sxx, syy, szz, //sum of xx/yy/zz
 		sxy, syz, sxz; //sum of xy/yz/xz
 	int	N; //#points in this PlaneSeg
@@ -88,7 +90,7 @@ struct PlaneSeg
 
       //push a new point (x,y,z) into this Stats
 	inline void
-	push(const double x, const double y, const double z)
+	push(const T x, const T y, const T z)
 	{
 	    sx+=x; sy+=y; sz+=z;
 	    sxx+=x*x; syy+=y*y; szz+=z*z;
@@ -108,7 +110,7 @@ struct PlaneSeg
 
       //caller is responsible to ensure (x,y,z) was collected in this stats
 	inline void
-	pop(const double x, const double y, const double z)
+	pop(const T x, const T y, const T z)
 	    {
 		sx-=x; sy-=y; sz-=z;
 		sxx-=x*x; syy-=y*y; szz-=z*z;
@@ -139,22 +141,22 @@ struct PlaneSeg
        *  \param [out] curvature defined as in pcl
        */
 	inline void
-	compute(double center[3], double normal[3],
-		double& mse, double& curvature) const
+	compute(T center[3], T normal[3],
+		T& mse, T& curvature) const
 	{
 	    assert(N>=4);
 
-	    const double sc=((double)1.0)/this->N;//this->ids.size();
+	    const T sc=((T)1.0)/this->N;//this->ids.size();
 	  //calc plane equation: center, normal and mse
 	    center[0]=sx*sc;
 	    center[1]=sy*sc;
 	    center[2]=sz*sc;
-	    double	K[3][3] = {{sxx-sx*sx*sc, sxy-sx*sy*sc, sxz-sx*sz*sc},
+	    T	K[3][3] = {{sxx-sx*sx*sc, sxy-sx*sy*sc, sxz-sx*sz*sc},
 				   {0,		  syy-sy*sy*sc, syz-sy*sz*sc},
 				   {0,		  0,		szz-sz*sz*sc}};
 	    K[1][0]=K[0][1]; K[2][0]=K[0][2]; K[2][1]=K[1][2];
-	    double sv[3]={0,0,0};
-	    double V[3][3]={0};
+	    T sv[3]={0,0,0};
+	    T V[3][3]={0};
 	    LA::eig33sym(K, sv, V); //!!! first eval is the least one
 	  //LA.svd33(K, sv, V);
 	    if(V[0][0]*center[0]+V[1][0]*center[1]+V[2][0]*center[2]<=0)
@@ -175,11 +177,11 @@ struct PlaneSeg
     } stats;					//member points' 1st & 2nd order statistics
 
     int rid;					//root block id
-    double mse;					//mean square error
-    double center[3]; 			//q: plane center (center of mass)
-    double normal[3]; 			//n: plane equation n'p=q
+    T mse;					//mean square error
+    T center[3]; 			//q: plane center (center of mass)
+    T normal[3]; 			//n: plane equation n'p=q
     int N;						//#member points, same as stats.N
-    double curvature;
+    T curvature;
     bool nouse;					//this PlaneSeg will be marked as nouse after merged with others to produce a new PlaneSeg node in the graph
 
 #ifdef DEBUG_INIT
@@ -204,8 +206,9 @@ struct PlaneSeg
     std::vector<cv::Vec2d> mseseq;
 #endif
 
-    typedef std::set<typename PlaneSeg::Ptr> NbSet; //no ownership of its content
+    typedef std::set<typename PlaneSeg<T>::Ptr> NbSet; //no ownership of its content
     NbSet nbs;			//neighbors, i.e. adjacency list for a graph structure
+    using iterator_t	= typename NbSet::iterator;
 
     inline void
     update()
@@ -234,7 +237,7 @@ struct PlaneSeg
 	     const int seed_row, const int seed_col,
 	     const int imgWidth, const int imgHeight,
 	     const int winWidth, const int winHeight,
-	     const ParamSet& params)
+	     const param_set_t& params)
     {
       //assert(0<=seed_row && seed_row<height && 0<=seed_col && seed_col<width && winW>0 && winH>0);
 	this->rid = root_block_id;
@@ -246,7 +249,7 @@ struct PlaneSeg
 	{
 	    for(int j=seed_col, jcnt=0; jcnt<winWidth && j<imgWidth; ++j, ++jcnt)
 	    {
-		double x=0,y=0,z=10000;
+		T x=0,y=0,z=10000;
 		if(!points.get(i,j,x,y,z))
 		{
 		    if(params.initType==INIT_LOOSE)
@@ -259,7 +262,7 @@ struct PlaneSeg
 #endif
 		    windowValid=false; break;
 		}
-		double xn=0,yn=0,zn=10000;
+		T xn=0,yn=0,zn=10000;
 		if(j+1<imgWidth && (points.get(i,j+1,xn,yn,zn)
 				    && depthDisContinuous(z,zn,params)))
 		{
@@ -297,7 +300,7 @@ struct PlaneSeg
 
 	if(this->N<4)
 	{
-	    this->mse=this->curvature=std::numeric_limits<double>::quiet_NaN();
+	    this->mse=this->curvature=std::numeric_limits<T>::quiet_NaN();
 	}
 	else
 	{
@@ -358,7 +361,7 @@ struct PlaneSeg
    *
    *  \details 1 means identical, 0 means perpendicular
    */
-    inline double
+    inline T
     normalSimilarity(const PlaneSeg& p) const
     {
 	return std::abs(normal[0]*p.normal[0]+
@@ -369,8 +372,8 @@ struct PlaneSeg
   /**
    *  \brief signed distance between this plane and the point pt[3]
    */
-    inline double
-    signedDist(const double pt[3]) const
+    inline T
+    signedDist(const T pt[3]) const
     {
 	return normal[0]*(pt[0]-center[0])+
 	       normal[1]*(pt[1]-center[1])+
@@ -400,7 +403,7 @@ struct PlaneSeg
     inline void
     disconnectAllNbs()
     {
-	NbSet::iterator itr = this->nbs.begin();
+	iterator_t itr = this->nbs.begin();
 	for(; itr!=this->nbs.end(); ++itr)
 	{
 	    PlaneSeg::Ptr nb = (*itr);
@@ -439,7 +442,7 @@ struct PlaneSeg
 	pb.disconnectAllNbs();
 
       //complete the neighborhood from the other side
-	NbSet::iterator itr = this->nbs.begin();
+	iterator_t itr = this->nbs.begin();
 	for(; itr!=this->nbs.end(); ++itr)
 	{
 	    PlaneSeg::Ptr nb = (*itr);

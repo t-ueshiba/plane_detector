@@ -88,14 +88,21 @@ enum ErodeType
 template <class Image3D>
 struct PlaneFitter
 {
+    using value_t	= typename Image3D::value_t;
+    using plane_seg_t	= PlaneSeg<value_t>;
+    using plane_seg_p	= typename plane_seg_t::Ptr;
+    using plane_seg_sp	= typename plane_seg_t::shared_ptr;
+    using nbs_t		= typename plane_seg_t::NbSet;
+    using param_set_t	= ParamSet<value_t>;
+
   /************************************************************************/
   /* Internal Classes                                                     */
   /************************************************************************/
   //for sorting PlaneSeg by size-decreasing order
     struct PlaneSegSizeCmp
     {
-	bool	operator()(const PlaneSeg::shared_ptr& a,
-			   const PlaneSeg::shared_ptr& b) const
+	bool	operator()(const plane_seg_sp& a,
+			   const plane_seg_sp& b) const
 		{
 		    return b->N < a->N;
 		}
@@ -104,15 +111,14 @@ struct PlaneFitter
   //for maintaining the Min MSE heap of PlaneSeg
     struct PlaneSegMinMSECmp
     {
-	bool	operator()(const PlaneSeg::shared_ptr& a,
-			   const PlaneSeg::shared_ptr& b) const
+	bool	operator()(const plane_seg_sp& a,
+			   const plane_seg_sp& b) const
 		{
 		    return b->mse < a->mse;
 		}
     };
 
-    typedef std::priority_queue<PlaneSeg::shared_ptr,
-				std::vector<PlaneSeg::shared_ptr>,
+    typedef std::priority_queue<plane_seg_sp, std::vector<plane_seg_sp>,
 				PlaneSegMinMSECmp> PlaneSegMinMSEQueue;
 
   /************************************************************************/
@@ -129,11 +135,11 @@ struct PlaneFitter
     bool doRefine;			//perform refinement of details or not
     ErodeType erodeType;
 
-    ParamSet params;		//sets of parameters controlling dynamic thresholds T_mse, T_ang, T_dz
+    param_set_t params;		//sets of parameters controlling dynamic thresholds T_mse, T_ang, T_dz
 
   //output
     ahc::shared_ptr<DisjointSet> ds;//with ownership, this disjoint set maintains membership of initial window/blocks during AHC merging
-    std::vector<PlaneSeg::shared_ptr> extractedPlanes;//a set of extracted planes
+    std::vector<plane_seg_sp> extractedPlanes;//a set of extracted planes
     cv::Mat membershipImg;//segmentation map of the input pointcloud, membershipImg(i,j) records which plane (plid, i.e. plane id) this pixel/point (i,j) belongs to
 
   //intermediate
@@ -144,7 +150,7 @@ struct PlaneFitter
     std::vector<cv::Vec3b> colors;
     std::vector<std::pair<int,int>> rfQueue;//for region grow/floodfill, p.first=pixidx, p.second=plid
     bool drawCoarseBorder;
-  //std::vector<PlaneSeg::Stats> blkStats;
+  //std::vector<plane_seg_t::Stats> blkStats;
 #if defined(DEBUG_INIT) || defined(DEBUG_CLUSTER)
     std::string saveDir;
 #endif
@@ -214,7 +220,7 @@ struct PlaneFitter
    *
    *  \details this function corresponds to Algorithm 1 in our paper
    */
-    double
+    value_t
     run(const Image3D* pointsIn,
 	std::vector<std::vector<int>>* pMembership=0,
 	cv::Mat* pSeg=0,
@@ -332,7 +338,7 @@ struct PlaneFitter
 	this->floodFill();
 
       //try to merge one last time
-	std::vector<PlaneSeg::shared_ptr> oldExtractedPlanes;
+	std::vector<plane_seg_sp> oldExtractedPlanes;
 	this->extractedPlanes.swap(oldExtractedPlanes);
 	PlaneSegMinMSEQueue minQ;
 	for(int i=0; i<(int)oldExtractedPlanes.size(); ++i)
@@ -347,7 +353,7 @@ struct PlaneFitter
 	int nFinalPlanes=0;
 	for(int i=0; i<(int)oldExtractedPlanes.size(); ++i)
 	{
-	    const PlaneSeg& op=*oldExtractedPlanes[i];
+	    const plane_seg_t& op=*oldExtractedPlanes[i];
 	    if(!isValidExtractedPlane[i])
 	    {
 		plidmap[i]=-1;//this plane was eroded
@@ -477,7 +483,7 @@ struct PlaneFitter
 	    const int seedy=sIdx/this->width;
 	    const int seedx=sIdx-seedy*this->width;
 	    const int plid=rfQueue[k].second;
-	    const PlaneSeg& pl = *extractedPlanes[plid];
+	    const plane_seg_t& pl = *extractedPlanes[plid];
 
 	    int nbs[4]={-1};
 	    const int Nnbs=this->getValid4Neighbor(seedy,seedx,this->height,this->width,nbs);
@@ -495,15 +501,15 @@ struct PlaneFitter
 		if(blkid>=0 && this->blkMap[blkid]>=0)
 		    continue; //not in "black" block
 
-		double pt[3]={0};
+		value_t pt[3]={0};
 		float cdist=-1;
 		if(this->points->get(cy,cx,pt[0],pt[1],pt[2]) &&
 		   std::pow(cdist=(float)std::abs(pl.signedDist(pt)),2)<9*pl.mse+1e-5) //point-plane distance within 3*std
 		{
 		    if(trail>=0)
 		    {
-			PlaneSeg& n_pl=*extractedPlanes[trail];
-			if(pl.normalSimilarity(n_pl)>=params.T_ang(ParamSet::P_REFINE, pl.center[2]))
+			plane_seg_t& n_pl=*extractedPlanes[trail];
+			if(pl.normalSimilarity(n_pl)>=params.T_ang(param_set_t::P_REFINE, pl.center[2]))
 			{//potential for merging
 			    n_pl.connect(extractedPlanes[plid].get());
 			}
@@ -741,7 +747,7 @@ struct PlaneFitter
 
 		//called by run when doRefine==false
     void
-    plotSegmentImage(cv::Mat* pSeg, const double supportTh)
+    plotSegmentImage(cv::Mat* pSeg, const value_t supportTh)
     {
 	if(pSeg==0)
 	    return;
@@ -887,7 +893,7 @@ struct PlaneFitter
 	const int Nw   = this->width/this->windowWidth;
 
       //1. init nodes
-	std::vector<PlaneSeg::Ptr> G(Nh*Nw,0);
+	std::vector<plane_seg_p> G(Nh*Nw,0);
       //this->blkStats.resize(Nh*Nw);
 
 #ifdef DEBUG_INIT
@@ -898,7 +904,7 @@ struct PlaneFitter
 	{
 	    for(int j=0; j<Nw; ++j)
 	    {
-		PlaneSeg::shared_ptr p( new PlaneSeg(*this->points,
+		plane_seg_sp p( new plane_seg_t(*this->points,
 						     (i*Nw+j),
 						     i*this->windowHeight,
 						     j*this->windowWidth,
@@ -907,7 +913,7 @@ struct PlaneFitter
 						     this->windowWidth,
 						     this->windowHeight,
 						     this->params) );
-		if(p->mse<params.T_mse(ParamSet::P_INIT, p->center[2])
+		if(p->mse<params.T_mse(param_set_t::P_INIT, p->center[2])
 		   && !p->nouse)
 		{
 		    G[i*Nw+j]=p.get();
@@ -938,19 +944,19 @@ struct PlaneFitter
 
 		    switch(p->type)
 		    {
-		      case PlaneSeg::TYPE_NORMAL: //draw a big dot
+		      case plane_seg_t::TYPE_NORMAL: //draw a big dot
 		      {
 			  static const cv::Scalar yellow(255,0,0,1);
 			  cv::circle(dInit, cv::Point(cx,cy), 3, yellow, 4);
 			  break;
 		      }
-		      case PlaneSeg::TYPE_MISSING_DATA: //draw an 'o'
+		      case plane_seg_t::TYPE_MISSING_DATA: //draw an 'o'
 		      {
 			  static const cv::Scalar black(0,0,0,1);
 			  cv::circle(dInit, cv::Point(cx,cy), 3, black, 2);
 			  break;
 		      }
-		      case PlaneSeg::TYPE_DEPTH_DISCONTINUE: //draw an 'x'
+		      case plane_seg_t::TYPE_DEPTH_DISCONTINUE: //draw an 'x'
 		      {
 			  static const cv::Scalar red(255,0,0,1);
 			  static const int len=4;
@@ -993,7 +999,7 @@ struct PlaneFitter
 		    ++j; continue;
 		}
 
-		const double similarityTh=params.T_ang(ParamSet::P_INIT, G[cidx]->center[2]);
+		const value_t similarityTh=params.T_ang(param_set_t::P_INIT, G[cidx]->center[2]);
 		if((j<Nw-1 && G[cidx-1]->normalSimilarity(*G[cidx+1])>=similarityTh) ||
 		   (j==Nw-1 && G[cidx]->normalSimilarity(*G[cidx-1])>=similarityTh))
 		{
@@ -1038,7 +1044,7 @@ struct PlaneFitter
 		    continue;
 		}
 
-		const double similarityTh=params.T_ang(ParamSet::P_INIT, G[cidx]->center[2]);
+		const value_t similarityTh=params.T_ang(param_set_t::P_INIT, G[cidx]->center[2]);
 		if((i<Nh-1 && G[cidx-Nw]->normalSimilarity(*G[cidx+Nw])>=similarityTh) ||
 		   (i==Nh-1 && G[cidx]->normalSimilarity(*G[cidx-Nw])>=similarityTh))
 		{
@@ -1117,7 +1123,7 @@ struct PlaneFitter
 	int step=0;
 	while(!minQ.empty() && step<=maxStep)
 	{
-	    PlaneSeg::shared_ptr p=minQ.top();
+	    plane_seg_sp p=minQ.top();
 	    minQ.pop();
 	    if(p->nouse)
 	    {
@@ -1143,12 +1149,12 @@ struct PlaneFitter
 		cv::circle(dGraph, cv::Point(cx,cy),3,blackColor,2);
 	    }
 #endif
-	    PlaneSeg::shared_ptr cand_merge;
-	    PlaneSeg::Ptr cand_nb(0);
-	    PlaneSeg::NbSet::iterator itr=p->nbs.begin();
+	    plane_seg_sp cand_merge;
+	    plane_seg_p cand_nb(0);
+	    typename nbs_t::iterator itr=p->nbs.begin();
 	    for(; itr!=p->nbs.end();itr++)
 	    {//test merge with all nbs, pick the one with min mse
-		PlaneSeg::Ptr nb=(*itr);
+		plane_seg_p nb=(*itr);
 #ifdef DEBUG_CLUSTER
 		{
 		    const int n_blkid=nb->rid;
@@ -1156,11 +1162,11 @@ struct PlaneFitter
 		}
 #endif
 	      //TODO: should we use dynamic similarityTh here?
-	      //const double similarityTh=ahc::depthDependNormalDeviationTh(p->center[2],500,4000,M_PI*15/180.0,M_PI/2);
+	      //const value_t similarityTh=ahc::depthDependNormalDeviationTh(p->center[2],500,4000,M_PI*15/180.0,M_PI/2);
 		if(p->normalSimilarity(*nb) <
-		   params.T_ang(ParamSet::P_MERGING, p->center[2]))
+		   params.T_ang(param_set_t::P_MERGING, p->center[2]))
 		    continue;
-		PlaneSeg::shared_ptr merge(new PlaneSeg(*p, *nb));
+		plane_seg_sp merge(new plane_seg_t(*p, *nb));
 		if(cand_merge==0 || cand_merge->mse>merge->mse ||
 		   (cand_merge->mse==merge->mse && cand_merge->N<merge->mse))
 		{
@@ -1172,7 +1178,7 @@ struct PlaneFitter
 	    itr=p->nbs.begin();
 	    for(; debug && itr!=p->nbs.end();itr++)
 	    {
-		PlaneSeg::Ptr nb=(*itr);
+		plane_seg_p nb=(*itr);
 		const int n_blkid=nb->rid;
 		const int i=n_blkid/Nw;
 		const int j=n_blkid-i*Nw;
@@ -1185,7 +1191,7 @@ struct PlaneFitter
 #endif
 	  //TODO: maybe a better merge condition? such as adaptive threshold on MSE like Falzenszwalb's method
 	    if(cand_merge!=0 &&
-	       cand_merge->mse<params.T_mse(ParamSet::P_MERGING,
+	       cand_merge->mse<params.T_mse(param_set_t::P_MERGING,
 					    cand_merge->center[2]))
 	    {//merge and add back to minQ
 #ifdef DEBUG_CLUSTER
@@ -1313,7 +1319,7 @@ struct PlaneFitter
 
 	while(!minQ.empty())
 	{//just check if any remaining PlaneSeg if maxstep reached
-	    const PlaneSeg::shared_ptr p=minQ.top();
+	    const plane_seg_sp p=minQ.top();
 	    minQ.pop();
 	    if(p->N>=this->minSupport)
 	    {
