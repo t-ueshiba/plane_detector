@@ -66,45 +66,45 @@ class PlaneSeg
    *  \details	It is usually dynamically allocated and garbage collected
    *		by boost::shared_ptr
    */
-    struct Stats
+    class Stats
     {
-	T	sx, sy, sz,	// sum of x/y/z
-		sxx, syy, szz,	// sum of xx/yy/zz
-		sxy, syz, sxz;	// sum of xy/yz/xz
-	int	N;		// #points in this PlaneSeg
-
+      public:
 	Stats()
-	    :sx(0), sy(0), sz(0),
-	     sxx(0), syy(0), szz(0), sxy(0), syz(0), sxz(0), N(0)	{}
+	    :_sx(0), _sy(0), _sz(0),
+	     _sxx(0), _syy(0), _szz(0), _sxy(0), _syz(0), _sxz(0),
+	     _size(0)							{}
 
       //merge from two other Stats
 	Stats(const Stats& a, const Stats& b)
-	    :sx(a.sx+b.sx), sy(a.sy+b.sy), sz(a.sz+b.sz),
-	     sxx(a.sxx+b.sxx), syy(a.syy+b.syy), szz(a.szz+b.szz),
-	     sxy(a.sxy+b.sxy), syz(a.syz+b.syz), sxz(a.sxz+b.sxz),
-	     N(a.N+b.N)							{}
+	    :_sx(a._sx + b._sx), _sy(a._sy + b._sy), _sz(a._sz + b._sz),
+	     _sxx(a._sxx + b._sxx), _syy(a._syy + b._syy),
+	     _szz(a._szz + b._szz), _sxy(a._sxy + b._sxy),
+	     _syz(a._syz + b._syz), _sxz(a._sxz + b._sxz),
+	     _size(a._size + b._size)					{}
 
+	int	size()				const	{ return _size; }
 	void	clear()
 		{
-		    sx = sy = sz = sxx = syy = szz = sxy = syz = sxz = 0;
-		    N = 0;
+		    _sx = _sy = _sz
+			= _sxx = _syy = _szz = _sxy = _syz = _sxz = 0;
+		    _size = 0;
 		}
 
       //push a new point (x,y,z) into this Stats
 	auto&	push(T x, T y, T z)
 		{
-		    sx += x;
-		    sy += y;
-		    sz += z;
+		    _sx += x;
+		    _sy += y;
+		    _sz += z;
 
-		    sxx += x*x;
-		    syy += y*y;
-		    szz += z*z;
-		    sxy += x*y;
-		    syz += y*z;
-		    sxz += x*z;
+		    _sxx += x*x;
+		    _syy += y*y;
+		    _szz += z*z;
+		    _sxy += x*y;
+		    _syz += y*z;
+		    _sxz += x*z;
 
-		    ++N;
+		    ++_size;
 
 		    return *this;
 		}
@@ -112,17 +112,17 @@ class PlaneSeg
       //push a new Stats into this Stats
 	auto&	operator +=(const Stats& other)
 		{
-		    sx += other.sx;
-		    sy += other.sy;
-		    sz += other.sz;
-		    sxx += other.sxx;
-		    syy += other.syy;
-		    szz += other.szz;
-		    sxy += other.sxy;
-		    syz += other.syz;
-		    sxz += other.sxz;
+		    _sx += other._sx;
+		    _sy += other._sy;
+		    _sz += other._sz;
+		    _sxx += other._sxx;
+		    _syy += other._syy;
+		    _szz += other._szz;
+		    _sxy += other._sxy;
+		    _syz += other._syz;
+		    _sxz += other._sxz;
 
-		    N += other.N;
+		    _size += other._size;
 
 		    return *this;
 		}
@@ -130,19 +130,19 @@ class PlaneSeg
       //caller is responsible to ensure (x,y,z) was collected in this stats
 	auto&	pop(T x, T y, T z)
 		{
-		    sx -= x;
-		    sy -= y;
-		    sz -= z;
+		    _sx -= x;
+		    _sy -= y;
+		    _sz -= z;
 
-		    sxx -= x*x;
-		    syy -= y*y;
-		    szz -= z*z;
-		    sxy -= x*y;
-		    syz -= y*z;
-		    sxz -= x*z;
+		    _sxx -= x*x;
+		    _syy -= y*y;
+		    _szz -= z*z;
+		    _sxy -= x*y;
+		    _syz -= y*z;
+		    _sxz -= x*z;
 
-		    --N;
-		    assert(N>=0);
+		    --_size;
+		    assert(_size>=0);
 
 		    return *this;
 		}
@@ -150,19 +150,19 @@ class PlaneSeg
       //caller is responsible to ensure {other} were collected in this stats
 	auto&	operator -=(const Stats& other)
 		{
-		    sx -= other.sx;
-		    sy -= other.sy;
-		    sz -= other.sz;
+		    _sx -= other._sx;
+		    _sy -= other._sy;
+		    _sz -= other._sz;
 
-		    sxx -= other.sxx;
-		    syy -= other.syy;
-		    szz -= other.szz;
-		    sxy -= other.sxy;
-		    syz -= other.syz;
-		    sxz -= other.sxz;
+		    _sxx -= other._sxx;
+		    _syy -= other._syy;
+		    _szz -= other._szz;
+		    _sxy -= other._sxy;
+		    _syz -= other._syz;
+		    _sxz -= other._sxz;
 
-		    N -= other.N;
-		    assert(N>=0);
+		    _size -= other._size;
+		    assert(_size >= 0);
 
 		    return *this;
 		}
@@ -178,16 +178,17 @@ class PlaneSeg
        */
 	void	compute(T center[3], T normal[3], T& mse, T& curvature) const
 		{
-		    assert(N>=4);
+		    assert(_size >= 4);
 
-		    const T	sc=T(1.0)/this->N;	//this->ids.size();
-	  //calc plane equation: center, normal and mse
-		    center[0] = sx*sc;
-		    center[1] = sy*sc;
-		    center[2] = sz*sc;
-		    T	K[3][3] = {{sxx-sx*sx*sc, sxy-sx*sy*sc, sxz-sx*sz*sc},
-				   {0,		  syy-sy*sy*sc, syz-sy*sz*sc},
-				   {0,		  0,		szz-sz*sz*sc}};
+		    const T	sc = T(1.0)/_size;	//this->ids.size();
+		  //calc plane equation: center, normal and mse
+		    center[0] = _sx*sc;
+		    center[1] = _sy*sc;
+		    center[2] = _sz*sc;
+		    T	K[3][3] =
+			{{_sxx-_sx*_sx*sc, _sxy-_sx*_sy*sc, _sxz-_sx*_sz*sc},
+			 {0,		   _syy-_sy*_sy*sc, _syz-_sy*_sz*sc},
+			 {0,		   0,		    _szz-_sz*_sz*sc}};
 		    K[1][0]=K[0][1]; K[2][0]=K[0][2]; K[2][1]=K[1][2];
 		    T	sv[3]	= {0, 0, 0};
 		    T	V[3][3] = {0};
@@ -208,9 +209,15 @@ class PlaneSeg
 			normal[1] = -V[1][0];
 			normal[2] = -V[2][0];
 		    }
-		    mse = sv[0] * sc;
+		    mse	      = sv[0] * sc;
 		    curvature = sv[0]/(sv[0] + sv[1] + sv[2]);
 		}
+
+      private:
+	T	_sx, _sy, _sz,		// sum of x/y/z
+		_sxx, _syy, _szz,	// sum of xx/yy/zz
+		_sxy, _syz, _sxz;	// sum of xy/yz/xz
+	int	_size;			// #points in this PlaneSeg
     };
 
   public:
@@ -236,21 +243,29 @@ class PlaneSeg
     PlaneSeg(const CLOUD& points, int root_block_id,
 	     int seed_row, int seed_col, int imgWidth, int imgHeight,
 	     int winWidth, int winHeight, const param_set_t& params)
+	:_stats(),
+	 _curvature(0),
+	 _rid(root_block_id),
+	 _mse(),
+	 _center(),
+	 _normal(),
+	 _N(0),
+	 _nouse(false),
+	 _nbs()
     {
       //assert(0<=seed_row && seed_row<height && 0<=seed_col && seed_col<width && winW>0 && winH>0);
-	this->rid = root_block_id;
-
-	bool	windowValid = true;
-	int	nanCnt = 0, nanCntTh = winHeight*winWidth/2;
+	bool		windowValid = true;
+	int		nanCnt = 0, nanCntTh = winHeight*winWidth/2;
       //calc _stats
-	for (int i=seed_row, icnt=0; icnt < winHeight && i < imgHeight;
-	     ++i, ++icnt)
+	const auto	vmax = std::min(imgHeight, seed_row + winHeight);
+	const auto	umax = std::min(imgWidth,  seed_col + winWidth);
+
+	for (int v = seed_row; v < vmax; ++v)
 	{
-	    for (int j=seed_col, jcnt=0; jcnt < winWidth && j < imgWidth;
-		 ++j, ++jcnt)
+	    for (int u = seed_col; u < umax; ++u)
 	    {
 		T	x = 0, y = 0, z = 10000;
-		if (!points.get(i, j, x, y, z))
+		if (!points.get(v, u, x, y, z))
 		{
 		    if (params.initType() == param_set_t::INIT_LOOSE)
 		    {
@@ -265,8 +280,8 @@ class PlaneSeg
 		    break;
 		}
 		T	xn = 0, yn = 0, zn = 10000;
-		if (j + 1 < imgWidth &&
-		    points.get(i, j+1, xn, yn, zn) &&
+		if (u + 1 < imgWidth &&
+		    points.get(v, u + 1, xn, yn, zn) &&
 		    depthDisContinuous(z, zn, params))
 		{
 #ifdef DEBUG_INIT
@@ -275,9 +290,9 @@ class PlaneSeg
 		    windowValid=false;
 		    break;
 		}
-		if (i + 1 < imgHeight &&
-		    points.get(i + 1, j, xn, yn, zn) &&
-		    depthDisContinuous(z,zn,params))
+		if (v + 1 < imgHeight &&
+		    points.get(v + 1, u, xn, yn, zn) &&
+		    depthDisContinuous(z, zn, params))
 		{
 #ifdef DEBUG_INIT
 		    _type = TYPE_DEPTH_DISCONTINUE;
@@ -293,28 +308,28 @@ class PlaneSeg
 
 	if (windowValid)
 	{//if nan or depth-discontinuity shows, this obj will be rejected
-	    this->nouse=false;
-	    this->N=_stats.N;
+	    _nouse = false;
+	    _N	   = _stats.size();
 #ifdef DEBUG_INIT
-	    _type = TYPE_NORMAL;
+	    _type  = TYPE_NORMAL;
 #endif
 	}
 	else
 	{
-	    this->N=0;
+	    _N = 0;
 	    _stats.clear();
-	    this->nouse=true;
+	    _nouse = true;
 	}
 
-	if (this->N<4)
+	if (_N < 4)
 	{
-	    this->mse = _curvature = std::numeric_limits<T>::quiet_NaN();
+	    _mse = _curvature = std::numeric_limits<T>::quiet_NaN();
 	}
 	else
 	{
-	    _stats.compute(_center, _normal, this->mse, _curvature);
+	    _stats.compute(_center, _normal, _mse, _curvature);
 #ifdef DEBUG_CALC
-	    _mseseq.push_back(cv::Vec2d(this->N,this->mse));
+	    _mseseq.push_back(cv::Vec2d(_N, _mse));
 #endif
 	  //nbs information to be maintained outside the class
 	  //typically when initializing the graph structure
@@ -336,20 +351,19 @@ class PlaneSeg
    *  \param pb	[in] a PlaneSeg
    */
     PlaneSeg(const PlaneSeg& pa, const PlaneSeg& pb)
-	:_stats(pa._stats, pb._stats)
+	:_stats(pa._stats, pb._stats),
+	 _rid(pa._N >= pb._N ? pa._rid : pb._rid),
+	 _N(_stats.size()),
+	 _nouse(false)
     {
 #ifdef DEBUG_INIT
 	_type = TYPE_NORMAL;
 #endif
-	this->nouse=false;
-	this->rid = pa.N>=pb.N ? pa.rid : pb.rid;
-	this->N=_stats.N;
-
-      //ds.union(pa.rid, pb.rid) will be called later
+      //ds.union(pa._rid, pb._rid) will be called later
       //in mergeNbsFrom(pa,pb) function, since
       //this object might not be accepted into the graph structure
 
-	_stats.compute(_center, _normal, this->mse, _curvature);
+	_stats.compute(_center, _normal, _mse, _curvature);
 
 #if defined(DEBUG_CLUSTER)
 	_normalClr = cv::Vec3b(uchar((_normal[0] + 1.0) * 0.5 * 255.0),
@@ -362,17 +376,16 @@ class PlaneSeg
 
     void	update()
 		{
-		    _stats.compute(_center, _normal,
-				   this->mse, _curvature);
+		    _stats.compute(_center, _normal,_mse, _curvature);
 		}
 
   /**
-   *  \brief similarity of two plane normals
+   *  \brief	similarity of two plane normals
    *
-   *  \param [in] p another PlaneSeg
-   *  \return abs(dot(_normal, p->_normal))
+   *  \param p	[in] another PlaneSeg
+   *  \return	abs(dot(_normal, p->_normal))
    *
-   *  \details 1 means identical, 0 means perpendicular
+   *  \details	1 means identical, 0 means perpendicular
    */
     T		normalSimilarity(const PlaneSeg& p) const
 		{
@@ -382,7 +395,7 @@ class PlaneSeg
 		}
 
   /**
-   *  \brief signed distance between this plane and the point pt[3]
+   *  \brief	signed distance between this plane and the point pt[3]
    */
     T		signedDist(const T pt[3]) const
 		{
@@ -392,9 +405,9 @@ class PlaneSeg
 		}
 
   /**
-   *  \brief connect this PlaneSeg to another PlaneSeg p in the graph
+   *  \brief	connect this PlaneSeg to another PlaneSeg p in the graph
    *
-   *  \param [in] p the other PlaneSeg
+   *  \param p	[in] the other PlaneSeg
    */
     void	connect(Ptr p)
 		{
@@ -406,9 +419,11 @@ class PlaneSeg
 		}
 
   /**
-   *  \brief disconnect this PlaneSeg with all its neighbors
+   *  \brief	disconnect this PlaneSeg with all its neighbors
    *
-   *  \details after this call, _nbs.nbs should not contain this, and _nbs should be empty i.e. after this call this PlaneSeg node should be isolated in the graph
+   *  \details	after this call, _nbs.nbs should not contain this,
+   *		and _nbs should be empty i.e. after this call
+   *		this PlaneSeg node should be isolated in the graph
    */
     void	disconnectAllNbs()
 		{
@@ -423,16 +438,22 @@ class PlaneSeg
   /**
    *  \brief finish merging PlaneSeg pa and pb to this
    *
-   *  \param [in] pa a parent PlaneSeg of this
-   *  \param [in] pb another parent PlaneSeg of this
-   *  \param [in] ds the disjoint set of initial window/block membership to be updated
+   *  \param pa	[in] a parent PlaneSeg of this
+   *  \param pb	[in] another parent PlaneSeg of this
+   *  \param ds	[in] the disjoint set of initial window/block membership
+   *		to be updated
    *
-   *  \details Only call this if this obj is accepted to be added to the graph of PlaneSeg pa and pb should not exist after this function is called, i.e. after this call this PlaneSeg node will be representing a merged node of pa and pb, and pa/pb will be isolated (and thus Garbage Collected) in the graph
+   *  \details	Only call this if this obj is accepted to be added
+   *		to the graph of PlaneSeg pa and pb should not exist
+   *		after this function is called, i.e. after this call
+   *		this PlaneSeg node will be representing a merged node
+   *		of pa and pb, and pa/pb will be isolated (and thus
+   *		Garbage Collected) in the graph
    */
     void	mergeNbsFrom(PlaneSeg& pa, PlaneSeg& pb, DisjointSet& ds)
 		{
 		  //now we are sure that merging pa and pb is accepted
-		    ds.Union(pa.rid, pb.rid);
+		    ds.Union(pa._rid, pb._rid);
 
 		  //the new neighbors should be pa._nbs+pb._nbs-pa-pb
 		    _nbs.insert(pa._nbs.begin(), pa._nbs.end());
@@ -448,23 +469,19 @@ class PlaneSeg
 		    for (auto nb : _nbs)
 			nb->_nbs.insert(this);
 
-		    pa.nouse=pb.nouse=true;
+		    pa._nouse=pb._nouse=true;
 #ifdef DEBUG_CALC
-		    if (pa.N >= pb.N)
-		    {
+		    if (pa._N >= pb._N)
 			_mseseq.swap(pa._mseseq);
-		    }
 		    else
-		    {
 			_mseseq.swap(pb._mseseq);
-		    }
-		    _mseseq.push_back(cv::Vec2d(this->N,this->mse));
+		    _mseseq.push_back(cv::Vec2d(_N, _mse));
 #endif
 		}
 
   private:
-    Stats	_stats;		//member points' 1st & 2nd order statistics
-    T		_curvature;
+    Stats			_stats;
+    T				_curvature;
 #ifdef DEBUG_CALC
     std::vector<cv::Vec2d>	_mseseq;
 #endif
@@ -475,28 +492,24 @@ class PlaneSeg
 	TYPE_MISSING_DATA	= 1,
 	TYPE_DEPTH_DISCONTINUE	= 2
     };
-
-    Type	_type;
+    Type			_type;
 #endif
 #if defined(DEBUG_INIT) || defined(DEBUG_CLUSTER)
-    cv::Vec3b	_clr;
-    cv::Vec3b	_normalClr;
-
-    cv::Vec3b&	getColor(bool useNormal=true)
-		{
-		    if (useNormal)
-			return _normalClr;
-		    return _clr;
-		}
+    cv::Vec3b			_clr;
+    cv::Vec3b			_normalClr;
+    cv::Vec3b&			getColor(bool useNormal=true)
+				{
+				    return (useNormal ? _normalClr : _clr);
+				}
 #endif
 
   public:
-    int		rid;		//root block id
-    T		mse;		//mean square error
+    int		_rid;		//root block id
+    T		_mse;		//mean square error
     T		_center[3]; 	//q: plane center (center of mass)
     T		_normal[3]; 	//n: plane equation n'p=q
-    int		N;		//#member points, same as _stats.N
-    bool	nouse;		//this PlaneSeg will be marked as nouse after merged with others to produce a new PlaneSeg node in the graph
+    int		_N;		//#member points, same as _stats._N
+    bool	_nouse;		//this PlaneSeg will be marked as _nouse after merged with others to produce a new PlaneSeg node in the graph
 
     std::set<Ptr>	_nbs;	//neighbors, i.e. adjacency list for a graph structure
 };//PlaneSeg

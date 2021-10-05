@@ -103,7 +103,7 @@ struct PlaneFitter
 	bool	operator()(const plane_seg_sp& a,
 			   const plane_seg_sp& b) const
 		{
-		    return b->N < a->N;
+		    return b->_N < a->_N;
 		}
     };
 
@@ -113,7 +113,7 @@ struct PlaneFitter
 	bool	operator()(const plane_seg_sp& a,
 			   const plane_seg_sp& b) const
 		{
-		    return b->mse < a->mse;
+		    return b->_mse < a->_mse;
 		}
     };
 
@@ -341,7 +341,7 @@ struct PlaneFitter
 	std::vector<plane_seg_sp> oldExtractedPlanes;
 	this->extractedPlanes.swap(oldExtractedPlanes);
 	PlaneSegMinMSEQueue minQ;
-	for (int i=0; i<(int)oldExtractedPlanes.size(); ++i)
+	for (int i = 0; i < (int)oldExtractedPlanes.size(); ++i)
 	{
 	    if (isValidExtractedPlane[i])
 		minQ.push(oldExtractedPlanes[i]);
@@ -360,7 +360,7 @@ struct PlaneFitter
 		continue;
 	    }
 	    int np_rid;
-	    if ((np_rid=ds->Find(op.rid))==op.rid)
+	    if ((np_rid = ds->Find(op._rid)) == op._rid)
 	    {//op is not changed
 		if (plidmap[i]<0) //if not updated, otherwise was updated before
 		    plidmap[i]=nFinalPlanes++;
@@ -388,7 +388,7 @@ struct PlaneFitter
 	    for (int i=0; i<nFinalPlanes; ++i)
 	    {
 		pMembership->at(i).reserve(
-		    (int)(this->extractedPlanes[i]->N*1.2f));
+		    (int)(this->extractedPlanes[i]->_N*1.2f));
 	    }
 	}
 
@@ -504,7 +504,7 @@ struct PlaneFitter
 		value_t pt[3]={0};
 		float cdist=-1;
 		if (this->points->get(cy,cx,pt[0],pt[1],pt[2]) &&
-		   std::pow(cdist=(float)std::abs(pl.signedDist(pt)),2)<9*pl.mse+1e-5) //point-plane distance within 3*std
+		   std::pow(cdist=(float)std::abs(pl.signedDist(pt)),2)<9*pl._mse+1e-5) //point-plane distance within 3*std
 		{
 		    if (trail>=0)
 		    {
@@ -548,7 +548,7 @@ struct PlaneFitter
 	rid2plid.clear();
 	for (int plid=0; plid<(int)extractedPlanes.size(); ++plid)
 	{
-	    rid2plid.insert(std::pair<int,int>(extractedPlanes[plid]->rid,plid));
+	    rid2plid.insert(std::pair<int,int>(extractedPlanes[plid]->_rid,plid));
 	}
 
 	const int Nh = this->height/this->windowHeight;
@@ -667,7 +667,7 @@ struct PlaneFitter
       //		if (this->extractedPlanes[i]->stats.N>=this->minSupport)
       //			this->extractedPlanes[i]->update();
       //	} else {
-      //		this->extractedPlanes[i]->nouse=true;
+      //		this->extractedPlanes[i]->_nouse=true;
       //	}
       //}
     }
@@ -682,7 +682,7 @@ struct PlaneFitter
 	rid2plid.clear();
 	for (int plid=0; plid<(int)extractedPlanes.size(); ++plid)
 	{
-	    rid2plid.insert(std::pair<int,int>(extractedPlanes[plid]->rid,plid));
+	    rid2plid.insert(std::pair<int,int>(extractedPlanes[plid]->_rid,plid));
 	}
 
 	const int Nh = this->height/this->windowHeight;
@@ -726,7 +726,7 @@ struct PlaneFitter
 	this->findBlockMembership();
 	const int cnt = (int)extractedPlanes.size();
 	ret.resize(cnt);
-	for (int i=0; i<cnt; ++i) ret[i].reserve(extractedPlanes[i]->N);
+	for (int i=0; i<cnt; ++i) ret[i].reserve(extractedPlanes[i]->_N);
 	for (int i=0,blkid=0; i<Nh; ++i)
 	{
 	    for (int j=0; j<Nw; ++j,++blkid)
@@ -914,14 +914,14 @@ struct PlaneFitter
 						  this->windowWidth,
 						  this->windowHeight,
 						  this->params));
-		if (p->mse<params.T_mse(param_set_t::P_INIT, p->_center[2])
-		    && !p->nouse)
+		if (p->_mse<params.T_mse(param_set_t::P_INIT, p->_center[2])
+		    && !p->_nouse)
 		{
 		    G[i*Nw+j]=p.get();
 		    minQ.push(p);
 		  //this->blkStats[i*Nw+j]=p->stats;
 #ifdef DEBUG_INIT
-		  //const uchar cl=uchar(p->mse*255/dynThresh);
+		  //const uchar cl=uchar(p->_mse*255/dynThresh);
 		  //const cv::Vec3b clr(cl,cl,cl);
 		    dInit(cv::Range(i*windowHeight,(i+1)*windowHeight),
 			  cv::Range(j*windowWidth, (j+1)*windowWidth)).setTo(p->getColor(true));
@@ -1127,7 +1127,7 @@ struct PlaneFitter
 	{
 	    plane_seg_sp p=minQ.top();
 	    minQ.pop();
-	    if (p->nouse)
+	    if (p->_nouse)
 	    {
 		assert(p->_nbs.size()<=0);
 		continue;
@@ -1141,7 +1141,7 @@ struct PlaneFitter
 	    int cx, cy;
 	    {
 		dSeg.copyTo(dGraph);
-		const int blkid=p->rid;
+		const int blkid=p->_rid;
 		this->floodFillColor(blkid, dGraph, p->getColor(false));
 		const int i=blkid/Nw;
 		const int j=blkid-i*Nw;
@@ -1157,7 +1157,7 @@ struct PlaneFitter
 	    {//test merge with all nbs, pick the one with min mse
 #ifdef DEBUG_CLUSTER
 		{
-		    const auto	n_blkid = nb->rid;
+		    const auto	n_blkid = nb->_rid;
 		    this->floodFillColor(n_blkid, dGraph, nb->getColor(false));
 		}
 #endif
@@ -1167,8 +1167,9 @@ struct PlaneFitter
 		    params.T_ang(param_set_t::P_MERGING, p->_center[2]))
 		    continue;
 		plane_seg_sp merge(new plane_seg_t(*p, *nb));
-		if (cand_merge==0 || cand_merge->mse>merge->mse ||
-		   (cand_merge->mse==merge->mse && cand_merge->N<merge->mse))
+		if (cand_merge == 0 || cand_merge->_mse > merge->_mse ||
+		   (cand_merge->_mse == merge->_mse &&
+		    cand_merge->_N < merge->_mse))
 		{
 		    cand_merge=merge;
 		    cand_nb=nb;
@@ -1178,7 +1179,7 @@ struct PlaneFitter
 	    if (debug)
 		for (auto nb : p->_nbs)
 		{
-		    const int n_blkid=nb->rid;
+		    const int n_blkid=nb->_rid;
 		    const int i=n_blkid/Nw;
 		    const int j=n_blkid-i*Nw;
 		    const int mx=j*windowWidth+0.5*(windowWidth-1);
@@ -1191,12 +1192,12 @@ struct PlaneFitter
 #endif
 	  //TODO: maybe a better merge condition? such as adaptive threshold on MSE like Falzenszwalb's method
 	    if (cand_merge!=0 &&
-		cand_merge->mse<params.T_mse(param_set_t::P_MERGING,
-					     cand_merge->_center[2]))
+		cand_merge->_mse<params.T_mse(param_set_t::P_MERGING,
+					      cand_merge->_center[2]))
 	    {//merge and add back to minQ
 #ifdef DEBUG_CLUSTER
 		{
-		    const int n_blkid=cand_nb->rid;
+		    const int n_blkid=cand_nb->_rid;
 		    const int i=n_blkid/Nw;
 		    const int j=n_blkid-i*Nw;
 		    const int mx=j*windowWidth+0.5*(windowWidth-1);
@@ -1229,7 +1230,7 @@ struct PlaneFitter
 #endif
 #ifdef DEBUG_CLUSTER
 		{
-		    floodFillColor(cand_merge->rid, dSeg,
+		    floodFillColor(cand_merge->_rid, dSeg,
 				   cand_merge->getColor(false));
 		    std::stringstream ss;
 		    ss << saveDir << "/output/cluster_"
@@ -1242,11 +1243,11 @@ struct PlaneFitter
 	    }
 	    else
 	    {//do not merge, but extract p
-		if (p->N >= this->minSupport)
+		if (p->_N >= this->minSupport)
 		{
 		    this->extractedPlanes.push_back(p);
 #ifdef DEBUG_CLUSTER
-		    const int blkid=p->rid;
+		    const int blkid=p->_rid;
 		    const int i=blkid/Nw;
 		    const int j=blkid-i*Nw;
 		    const int ex=j*windowWidth+0.5*(windowWidth-1);
@@ -1266,7 +1267,7 @@ struct PlaneFitter
 			cv::imshow("debug Graph", dGraph);
 		    }
 		    {
-			floodFillColor(p->rid, dSeg, p->getColor(false));
+			floodFillColor(p->_rid, dSeg, p->getColor(false));
 			cv::line(dSeg, cv::Point(ex-len,ey),
 				 cv::Point(ex+len,ey), blackColor, 2);
 			cv::line(dSeg, cv::Point(ex,ey-len),
@@ -1285,7 +1286,7 @@ struct PlaneFitter
 		else
 		{
 		    {
-			floodFillColor(p->rid, dGraph, cv::Vec3b(0,0,0));
+			floodFillColor(p->_rid, dGraph, cv::Vec3b(0,0,0));
 			std::stringstream ss;
 			ss << saveDir << "/output/dGraph_"
 			   << std::setw(5) << std::setfill('0') << ++dSegCnt
@@ -1294,7 +1295,7 @@ struct PlaneFitter
 			cv::imshow("debug Graph", dGraph);
 		    }
 		    {
-			floodFillColor(p->rid, dSeg, cv::Vec3b(0,0,0));
+			floodFillColor(p->_rid, dSeg, cv::Vec3b(0,0,0));
 			std::stringstream ss;
 			ss << saveDir << "/output/cluster_"
 			   << std::setw(5) << std::setfill('0') << dSegCnt
@@ -1322,7 +1323,7 @@ struct PlaneFitter
 	{//just check if any remaining PlaneSeg if maxstep reached
 	    const auto	p = minQ.top();
 	    minQ.pop();
-	    if (p->N >= this->minSupport)
+	    if (p->_N >= this->minSupport)
 	    {
 		this->extractedPlanes.push_back(p);
 	    }
@@ -1340,7 +1341,7 @@ struct PlaneFitter
       //static PlaneSegSizeCmp sizecmp;
 	std::sort(this->extractedPlanes.begin(),
 		  this->extractedPlanes.end(),
-		  [](const auto& a, const auto& b){ return b->N < a->N; });
+		  [](const auto& a, const auto& b){ return b->_N < a->_N; });
 	return step;
     }
 };//end of PlaneFitter
