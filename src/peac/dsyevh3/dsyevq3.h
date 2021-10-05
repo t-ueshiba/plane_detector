@@ -18,8 +18,7 @@
 // ----------------------------------------------------------------------------
 #pragma once
 
-#include <stdio.h>
-#include <math.h>
+#include <cmath>
 #include "dsytrd3.h"
 #include "dsyevq3.h"
 
@@ -28,8 +27,8 @@
 
 
 // ----------------------------------------------------------------------------
-template <class T>
-int dsyevq3(T A[3][3], T Q[3][3], T w[3])
+template <class T> int
+dsyevq3(T A[3][3], T Q[3][3], T w[3])
 // ----------------------------------------------------------------------------
 // Calculates the eigenvalues and normalized eigenvectors of a symmetric 3x3
 // matrix A using the QL algorithm with implicit shifts, preceded by a
@@ -72,8 +71,8 @@ int dsyevq3(T A[3][3], T Q[3][3], T w[3])
       // element e(l) is zero
       for (m=l; m <= n-2; m++)
       {
-        g = fabs(w[m])+fabs(w[m+1]);
-        if (fabs(e[m]) + g == g)
+	g = std::abs(w[m])+std::abs(w[m+1]);
+        if (std::abs(e[m]) + g == g)
           break;
       }
       if (m == l)
@@ -84,7 +83,7 @@ int dsyevq3(T A[3][3], T Q[3][3], T w[3])
 
       // Calculate g = d_m - k
       g = (w[l+1] - w[l]) / (e[l] + e[l]);
-      r = sqrt(SQR(g) + 1.0);
+      r = std::sqrt(SQR(g) + 1.0);
       if (g > 0)
         g = w[m] - w[l] + e[l]/(g + r);
       else
@@ -96,17 +95,17 @@ int dsyevq3(T A[3][3], T Q[3][3], T w[3])
       {
         f = s * e[i];
         b = c * e[i];
-        if (fabs(f) > fabs(g))
+        if (std::abs(f) > std::abs(g))
         {
           c      = g / f;
-          r      = sqrt(SQR(c) + 1.0);
+          r      = std::sqrt(SQR(c) + 1.0);
           e[i+1] = f * r;
           c     *= (s = 1.0/r);
         }
         else
         {
           s      = f / g;
-          r      = sqrt(SQR(s) + 1.0);
+          r      = std::sqrt(SQR(s) + 1.0);
           e[i+1] = g * r;
           s     *= (c = 1.0/r);
         }

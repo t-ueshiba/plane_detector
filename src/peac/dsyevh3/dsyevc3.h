@@ -18,8 +18,7 @@
 // ----------------------------------------------------------------------------
 #pragma once
 
-#include <stdio.h>
-#include <math.h>
+#include <cmath>
 #include "dsyevc3.h"
 
 // Constants
@@ -30,8 +29,8 @@
 
 
 // ----------------------------------------------------------------------------
-template <class T>
-int dsyevc3(T A[3][3], T w[3])
+template <class T> int
+dsyevc3(T A[3][3], T w[3])
 // ----------------------------------------------------------------------------
 // Calculates the eigenvalues of a symmetric 3x3 matrix A using Cardano's
 // analytical algorithm.
@@ -66,13 +65,13 @@ int dsyevc3(T A[3][3], T w[3])
   T p, sqrt_p, q, c, s, phi;
   p = SQR(m) - 3.0*c1;
   q = m*(p - (3.0/2.0)*c1) - (27.0/2.0)*c0;
-  sqrt_p = sqrt(fabs(p));
+  sqrt_p = std::sqrt(std::abs(p));
 
   phi = 27.0 * ( 0.25*SQR(c1)*(p - c1) + c0*(q + 27.0/4.0*c0));
-  phi = (1.0/3.0) * atan2(sqrt(fabs(phi)), q);
+  phi = (1.0/3.0) * std::atan2(std::sqrt(std::abs(phi)), q);
 
-  c = sqrt_p*cos(phi);
-  s = (1.0/M_SQRT3)*sqrt_p*sin(phi);
+  c = sqrt_p*std::cos(phi);
+  s = (1.0/M_SQRT3)*sqrt_p*std::sin(phi);
 
   w[1]  = (1.0/3.0)*(m - c);
   w[2]  = w[1] + s;

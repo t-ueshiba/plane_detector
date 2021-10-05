@@ -18,10 +18,8 @@
 // ----------------------------------------------------------------------------
 #pragma once
 
-#include <stdio.h>
-#include <math.h>
-#include <complex.h>
-#include <float.h>
+#include <cmath>
+#include <limits>
 #include "dsyevc3.h"
 #include "dsyevq3.h"
 #include "dsyevh3.h"
@@ -73,16 +71,16 @@ dsyevh3(T A[3][3], T Q[3][3], T w[3])
 //  n0 = SQR(A[0][0]) + SQR(A[0][1]) + SQR(A[0][2]);
 //  n1 = SQR(A[0][1]) + SQR(A[1][1]) + SQR(A[1][2]);
 
-  t = fabs(w[0]);
-  if ((u=fabs(w[1])) > t)
+  t = std::abs(w[0]);
+  if ((u=std::abs(w[1])) > t)
     t = u;
-  if ((u=fabs(w[2])) > t)
+  if ((u=std::abs(w[2])) > t)
     t = u;
   if (t < 1.0)
     u = t;
   else
     u = SQR(t);
-  error = 256.0 * DBL_EPSILON * SQR(u);
+  error = 256.0 * std::numeric_limits<T>::epsilon() * SQR(u);
 //  error = 256.0 * DBL_EPSILON * (n0 + u) * (n1 + u);
 
   Q[0][1] = A[0][1]*A[1][2] - A[0][2]*A[1][1];
@@ -106,7 +104,7 @@ dsyevh3(T A[3][3], T Q[3][3], T w[3])
     return dsyevq3(A, Q, w);
   else                      // This is the standard branch
   {
-    norm = sqrt(1.0 / norm);
+    norm = std::sqrt(1.0 / norm);
     for (j=0; j < 3; j++)
       Q[j][0] = Q[j][0] * norm;
   }

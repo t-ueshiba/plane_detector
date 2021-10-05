@@ -18,8 +18,7 @@
 // ----------------------------------------------------------------------------
 #pragma once
 
-#include <stdio.h>
-#include <math.h>
+#include <cmath>
 #include "dsytrd3.h"
 
 // Macros
@@ -27,8 +26,8 @@
 
 
 // ----------------------------------------------------------------------------
-template <class T>
-void dsytrd3(T A[3][3], T Q[3][3], T d[3], T e[2])
+template <class T> void
+dsytrd3(T A[3][3], T Q[3][3], T d[3], T e[2])
 // ----------------------------------------------------------------------------
 // Reduces a symmetric 3x3 matrix to tridiagonal form by applying
 // (unitary) Householder transformations:
@@ -57,9 +56,9 @@ void dsytrd3(T A[3][3], T Q[3][3], T d[3], T e[2])
   // Bring first row and column to the desired form
   h = SQR(A[0][1]) + SQR(A[0][2]);
   if (A[0][1] > 0)
-    g = -sqrt(h);
+    g = -std::sqrt(h);
   else
-    g = sqrt(h);
+    g = std::sqrt(h);
   e[0] = g;
   f    = g * A[0][1];
   u[1] = A[0][1] - g;

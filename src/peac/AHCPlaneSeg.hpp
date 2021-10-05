@@ -246,9 +246,9 @@ class PlaneSeg
 	:_stats(),
 	 _curvature(0),
 	 _rid(root_block_id),
-	 _mse(),
 	 _center(),
 	 _normal(),
+	 _mse(),
 	 _N(0),
 	 _nouse(false),
 	 _nbs()
@@ -308,16 +308,16 @@ class PlaneSeg
 
 	if (windowValid)
 	{//if nan or depth-discontinuity shows, this obj will be rejected
-	    _nouse = false;
 	    _N	   = _stats.size();
+	    _nouse = false;
 #ifdef DEBUG_INIT
 	    _type  = TYPE_NORMAL;
 #endif
 	}
 	else
 	{
-	    _N = 0;
 	    _stats.clear();
+	    _N = 0;
 	    _nouse = true;
 	}
 
@@ -335,10 +335,10 @@ class PlaneSeg
 	  //typically when initializing the graph structure
 	}
 #if defined(DEBUG_INIT) || defined(DEBUG_CLUSTER)
-	_normalClr	= cv::Vec3b(uchar((_normal[0] + 1.0) * 0.5 * 255.0),
-				    uchar((_normal[1] + 1.0) * 0.5 * 255.0),
-				    uchar((_normal[2] + 1.0) * 0.5 * 255.0));
-	_clr		= cv::Vec3b(rand() % 255, rand() % 255, rand() % 255);
+	_normalClr = cv::Vec3b(uchar((_normal[0] + 1.0) * 0.5 * 255.0),
+			       uchar((_normal[1] + 1.0) * 0.5 * 255.0),
+			       uchar((_normal[2] + 1.0) * 0.5 * 255.0));
+	_clr	   = cv::Vec3b(rand() % 255, rand() % 255, rand() % 255);
 #endif
       //std::cout<<_curvature<<std::endl;
     }
@@ -505,9 +505,9 @@ class PlaneSeg
 
   public:
     int		_rid;		//root block id
-    T		_mse;		//mean square error
     T		_center[3]; 	//q: plane center (center of mass)
     T		_normal[3]; 	//n: plane equation n'p=q
+    T		_mse;		//mean square error
     int		_N;		//#member points, same as _stats._N
     bool	_nouse;		//this PlaneSeg will be marked as _nouse after merged with others to produce a new PlaneSeg node in the graph
 
