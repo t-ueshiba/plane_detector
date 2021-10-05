@@ -1,0 +1,8 @@
+<library path="lib/libplane_detector_nodelet">
+  <class name="plane_detector/plane_detector_nodelet"
+	 type="plane_detector::DetectorNodelet"
+	 base_class_type="nodelet::Nodelet">
+    <description>
+    </description>
+  </class>
+</library>

@@ -1,0 +1,31 @@
+<launch>
+
+  <arg name="planarity_tolerance"	default="0.001"/>
+  <arg name="manager"			default=""/>
+  <arg name="camera_info_topic"		default="camera_info"/>
+  <arg name="image_topic"		default="texture"/>
+  <arg name="depth_topic"		default="depth_map"/>
+
+  <node if="$(eval manager == '')"
+	name="plane_detector" pkg="plane_detector" type="plane_detector"
+  	output="screen">
+    <remap from="/camera_info"		to="$(arg camera_info_topic)"/>
+    <remap from="/image"		to="$(arg image_topic)"/>
+    <remap from="/depth"		to="$(arg depth_topic)"/>
+
+    <!-- Other parameters -->
+    <param name="planarity_tolerance"	value="$(arg planarity_tolerance)"/>
+  </node>
+
+  <node unless="$(eval manager == '')"
+	name="plane_detector" pkg="nodelet" type="nodelet" output="screen"
+  	args="load plane_detector/plane_detector_nodelet $(arg manager)">
+    <remap from="/camera_info"		to="$(arg camera_info_topic)"/>
+    <remap from="/image"		to="$(arg image_topic)"/>
+    <remap from="/depth"		to="$(arg depth_topic)"/>
+
+    <!-- Other parameters -->
+    <param name="planarity_tolerance"	value="$(arg planarity_tolerance)"/>
+  </node>
+
+</launch>
