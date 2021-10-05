@@ -64,7 +64,7 @@ class Detector
 	std::vector<point3_t<T> >	_vertices; // 3D vertices
     };
 
-    using cloud_t	= PointCloud<float>;
+    using cloud_t	= PointCloud<double>;
 
   public:
 		Detector(const ros::NodeHandle& nh)			;
@@ -93,7 +93,9 @@ class Detector
     message_filters::Synchronizer<sync_policy_t>	_sync;
 
   // output stuff
+    const ros::Publisher				_camera_info_pub;
     const image_transport::Publisher			_image_pub;
+    const image_transport::Publisher			_depth_pub;
     const ros::Publisher				_pose_pub;
 
     ddynamic_reconfigure::DDynamicReconfigure		_ddr;

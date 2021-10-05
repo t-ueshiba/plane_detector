@@ -42,7 +42,7 @@ namespace ahc
 template <class T> inline static bool
 depthDisContinuous(const T d0, const T d1, const ParamSet<T>& params)
 {
-    return fabs(d0-d1) > params.T_dz(d0);
+    return std::abs(d0-d1) > params.T_dz(d0);
 }
 
 /**
@@ -206,7 +206,7 @@ struct PlaneSeg
     std::vector<cv::Vec2d> mseseq;
 #endif
 
-    typedef std::set<typename PlaneSeg<T>::Ptr> NbSet; //no ownership of its content
+    typedef std::set<PlaneSeg::Ptr> NbSet; //no ownership of its content
     NbSet nbs;			//neighbors, i.e. adjacency list for a graph structure
     using iterator_t	= typename NbSet::iterator;
 

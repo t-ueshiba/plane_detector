@@ -35,7 +35,9 @@ Detector::Detector(const ros::NodeHandle& nh)
      _image_sub(_it, "/image", 1),
      _depth_sub(_it, "/depth", 1),
      _sync(sync_policy_t(10), _camera_info_sub, _image_sub, _depth_sub),
-     _image_pub(_it.advertise("result", 1)),
+     _camera_info_pub(_nh.advertise<camera_info_t>("camera_info", 1)),
+     _image_pub(_it.advertise("image", 1)),
+     _depth_pub(_it.advertise("depth", 1)),
      _pose_pub(_nh.advertise<geometry_msgs::PoseStamped>("pose", 100)),
      _ddr(),
      _planarityTolerance(0.001),
@@ -84,7 +86,9 @@ Detector::detect_plane_cb(const camera_info_p& camera_info_msg,
 
 	_plane_fitter.run(&_cloud, &_plane_vertices, &_seg_img.image);
 
+	_camera_info_pub.publish(camera_info_msg);
 	_image_pub.publish(_seg_img.toImageMsg());
+	_depth_pub.publish(depth_msg);
     }
     catch (const std::exception& e)
     {
