@@ -6,6 +6,7 @@ add_compile_options(-w)
 add_compile_options(-std=c++14)
 add_compile_options(-fpermissive)
 add_compile_options(-pthread)
+add_compile_options(-DUSE_DSYEVH3)
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -42,6 +43,10 @@ catkin_package(
 add_executable(${PROJECT_NAME}
   src/main.cpp
   src/Detector.cpp
+  src/dsyevh3C/dsyevc3.c
+  src/dsyevh3C/dsyevh3.c
+  src/dsyevh3C/dsyevq3.c
+  src/dsyevh3C/dsytrd3.c
 )
 
 add_dependencies(${PROJECT_NAME}

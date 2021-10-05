@@ -1329,9 +1329,10 @@ struct PlaneFitter
 	    exit(-1);
 	}
 #endif
-	static PlaneSegSizeCmp sizecmp;
+      //static PlaneSegSizeCmp sizecmp;
 	std::sort(this->extractedPlanes.begin(),
-		  this->extractedPlanes.end(), sizecmp);
+		  this->extractedPlanes.end(),
+		  [](const auto& a, const auto& b){ return b->N < a->N; });
 	return step;
     }
 };//end of PlaneFitter
