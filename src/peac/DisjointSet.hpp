@@ -30,77 +30,69 @@
 
 class DisjointSet
 {
-  private:
-    std::vector<int>	parent_;
-    std::vector<int>	size_;
-
   public:
-		DisjointSet(const int n)
+		DisjointSet(int n)
+		    :_parent(n), _size(n)
 		{
-		    parent_.reserve(n);
-		    size_.reserve(n);
-
-		    for (int i=0; i<n; ++i)
+		    for (int i = 0; i < n; ++i)
 		    {
-			parent_.push_back(i);
-			size_.push_back(1);
+			_parent[i] = i;
+			_size[i]   = 1;
 		    }
 		}
 
-		~DisjointSet()
-		{
-		}
+		~DisjointSet()			{}
 
-    inline void	remove(const int x)
+    void	remove(int x)
 		{
-		    if(parent_[x]!=x)
+		    if(_parent[x] != x)
 		    {
-			--size_[Find(x)];
-			parent_[x]=x;
-			size_[x]=1;
+			--_size[Find(x)];
+			_parent[x] = x;
+			_size[x]   = 1;
 		    }
 		}
 
-    inline int	getSetSize(const int x)
-		{
-		    return size_[Find(x)];
-		}
+    int		getSetSize(int x)	const	{ return _size[Find(x)]; }
 
-    inline int	Union(const int x, const int y)
+    int		Union(int x, int y)
 		{
-		    const int xRoot = Find(x);
-		    const int yRoot = Find(y);
+		    const auto	xRoot = Find(x);
+		    const auto	yRoot = Find(y);
 
 		    if (xRoot == yRoot)
 			return xRoot;
 
-		    const int xRootSize = size_[xRoot];
-		    const int yRootSize = size_[yRoot];
+		    const auto	xRootSize = _size[xRoot];
+		    const auto	yRootSize = _size[yRoot];
 
 		    if (xRootSize < yRootSize)
 		    {
-			parent_[xRoot] = yRoot;
-			size_[yRoot]+=size_[xRoot];
+			_parent[xRoot] = yRoot;
+			_size[yRoot]  += _size[xRoot];
 			return yRoot;
 		    }
 		    else
 		    {
-			parent_[yRoot] = xRoot;
-			size_[xRoot]+=size_[yRoot];
+			_parent[yRoot] = xRoot;
+			_size[xRoot]  += _size[yRoot];
 			return xRoot;
 		    }
 		}
 
-    inline int	Find(const int x)
+    int		Find(int x)
 		{
-		    if (parent_[x] != x)
-			parent_[x] = Find(parent_[x]);
+		    if (_parent[x] != x)
+			_parent[x] = Find(_parent[x]);
 
-		    return parent_[x];
+		    return _parent[x];
 		}
 
+			DisjointSet()				= delete;
+			DisjointSet(const DisjointSet& rhs)	= delete;
+    DisjointSet&	operator=(const DisjointSet& rhs)	= delete;
+
   private:
-    DisjointSet();
-    DisjointSet(const DisjointSet& rhs);
-    const DisjointSet& operator=(const DisjointSet& rhs);
+    std::vector<int>	_parent;
+    std::vector<int>	_size;
 };
