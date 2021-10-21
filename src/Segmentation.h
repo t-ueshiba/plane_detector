@@ -36,9 +36,9 @@ class Segmentation
 
       public:
 #ifndef TU_MESH_DEBUG
-	Vertex(riterator r[], viterator vend)			;
+	Vertex(riterator r[], viterator vend)				;
 #else
-	Vertex(riterator r[], viterator vend, size_t vn)	;
+	Vertex(riterator r[], viterator vend, size_t vn)		;
 #endif
 
       private:
@@ -105,10 +105,10 @@ class Segmentation
     Edge		initialize(const R region[])			;
     void		clear()						;
 
+    bool		reduce(Edge& edge)				;
     Edge		kill(Edge& edge)				;
     Edge		make(const Edge& edge0,
 			     const Edge& edge1, const R& r)		;
-    bool		contract(Edge& edge)				;
 
     riterator		begin()						;
     const_riterator	begin()					const	;
@@ -163,6 +163,23 @@ Segmentation<R>::clear()
     _vertices.clear();
 }
 
+template <class R> bool
+Segmentation<R>::reduce(Edge& edge)
+{
+    if (edge.valence() == 2)
+    {
+	const auto	edgeC = edge.conj();
+	const auto	v     = edge.v();
+	~(++edge);
+	edge.pair(edgeC);
+	deleteVertex(v);
+
+	return true;
+    }
+    else
+	return false;
+}
+
 template <class R> typename Segmentation<R>::Edge
 Segmentation<R>::kill(Edge& edge)
 {
@@ -182,11 +199,13 @@ Segmentation<R>::kill(Edge& edge)
 
   // Replace regions
     const auto	edgeP = edge.prev();
+    const auto	rP    = edgeP.r();
     edge = edgeC.prev();
     edgeP.replaceRegion(edge.r(), edge);
-
-    edgeP = contract(edgeP);
-    edge  = contract(edge);
+    deleteRegion(rP);
+    
+    reduce(edgeP);
+    reduce(edge);
     
     return edgeP;
 }
@@ -233,23 +252,6 @@ Segmentation<R>::make(const Edge& edge0, const Edge& edge1, const R& v)
     (--edgeC).pair(edge1C);
 
     return --edge;
-}
-
-template <class R> bool
-Segmentation<R>::contract(Edge& edge)
-{
-    if (edge.valence() == 2)
-    {
-	const auto	edgeC = edge.conj();
-	const auto	v     = edge.v();
-	~(++edge);
-	edge.pair(edgeC);
-	deleteVertex(v);
-
-	return true;
-    }
-    else
-	return false;
 }
 
 template <class R> inline typename Segmentation<R>::riterator
