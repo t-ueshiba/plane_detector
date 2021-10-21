@@ -94,7 +94,7 @@ class Segmentation
 	void		pair(const Edge& edge)			const	;
 	void		replaceRegion(riterator r,
 				      const Edge& edgeE)	const	;
-	
+
       private:
 	viterator	_v;		//!< 親の頂点を指す反復子
 	size_t		_e;		//!< 辺の番号
@@ -105,10 +105,10 @@ class Segmentation
     Edge		initialize(const R region[])			;
     void		clear()						;
 
+    bool		creduce(Edge& edge)				;
     Edge		kill(Edge& edge)				;
     Edge		make(const Edge& edge0,
 			     const Edge& edge1, const R& r)		;
-    bool		contract(Edge& edge)				;
 
     riterator		begin()						;
     const_riterator	begin()					const	;
@@ -163,6 +163,23 @@ Segmentation<R>::clear()
     _vertices.clear();
 }
 
+template <class R> bool
+Segmentation<R>::contract(Edge& edge)
+{
+    if (edge.valence() == 2)
+    {
+	const auto	edgeC = edge.conj();
+	const auto	v     = edge.v();
+	~(++edge);
+	edge.pair(edgeC);
+	deleteVertex(v);
+
+	return true;
+    }
+    else
+	return false;
+}
+
 template <class R> typename Segmentation<R>::Edge
 Segmentation<R>::kill(Edge& edge)
 {
@@ -182,12 +199,14 @@ Segmentation<R>::kill(Edge& edge)
 
   // Replace regions
     const auto	edgeP = edge.prev();
+    const auto	rP    = edgeP.r();
     edge = edgeC.prev();
     edgeP.replaceRegion(edge.r(), edge);
+    deleteRegion(rP);
 
-    edgeP = contract(edgeP);
-    edge  = contract(edge);
-    
+    reduce(edgeP);
+    reduce(edge);
+
     return edgeP;
 }
 
@@ -233,23 +252,6 @@ Segmentation<R>::make(const Edge& edge0, const Edge& edge1, const R& v)
     (--edgeC).pair(edge1C);
 
     return --edge;
-}
-
-template <class R> bool
-Segmentation<R>::contract(Edge& edge)
-{
-    if (edge.valence() == 2)
-    {
-	const auto	edgeC = edge.conj();
-	const auto	v     = edge.v();
-	~(++edge);
-	edge.pair(edgeC);
-	deleteVertex(v);
-
-	return true;
-    }
-    else
-	return false;
 }
 
 template <class R> inline typename Segmentation<R>::riterator
@@ -348,10 +350,10 @@ Segmentation<R>::Vertex::self(viterator vend) const
 	    for (auto v : vt->_v)		// vcのe番目の辺を介して
 		if (v != vend && &(*v) == this)	// この頂点を指していたら
 		    return v;			// vがこの頂点への反復子．
-    
+
 	    throw std::runtime_error("Segmentation<R>::Vertex::self(): Internal error!");
 	}
-    
+
     return vend;
 }
 
@@ -398,7 +400,7 @@ Segmentation<R>::Edge::valence() const
 	    ++n;
     return n;
 }
-    
+
 template <class R> inline typename Segmentation<R>::Edge&
 Segmentation<R>::Edge::operator ++()
 {
