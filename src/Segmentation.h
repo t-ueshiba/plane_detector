@@ -94,7 +94,7 @@ class Segmentation
 	void		pair(const Edge& edge)			const	;
 	void		replaceRegion(riterator r,
 				      const Edge& edgeE)	const	;
-	
+
       private:
 	viterator	_v;		//!< 親の頂点を指す反復子
 	size_t		_e;		//!< 辺の番号
@@ -206,7 +206,7 @@ Segmentation<R>::kill(Edge& edge)
     
     reduce(edgeP);
     reduce(edge);
-    
+
     return edgeP;
 }
 
@@ -350,10 +350,10 @@ Segmentation<R>::Vertex::self(viterator vend) const
 	    for (auto v : vt->_v)		// vcのe番目の辺を介して
 		if (v != vend && &(*v) == this)	// この頂点を指していたら
 		    return v;			// vがこの頂点への反復子．
-    
+
 	    throw std::runtime_error("Segmentation<R>::Vertex::self(): Internal error!");
 	}
-    
+
     return vend;
 }
 
@@ -400,7 +400,7 @@ Segmentation<R>::Edge::valence() const
 	    ++n;
     return n;
 }
-    
+
 template <class R> inline typename Segmentation<R>::Edge&
 Segmentation<R>::Edge::operator ++()
 {
