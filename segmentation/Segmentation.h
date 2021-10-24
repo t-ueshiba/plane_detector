@@ -41,6 +41,8 @@ class Segmentation
 	Vertex(riterator r[], viterator vend, size_t vn)		;
 #endif
 
+	size_t		valence()				const	;
+
       private:
 	viterator	self(viterator vend)			const	;
 
@@ -89,8 +91,7 @@ class Segmentation
 	Edge(viterator v, viterator vend)				;
 
 	riterator	r()					const	;
-	viterator	vt()					const	;
-	viterator&	vt()						;
+	viterator&	vt()					const	;
 	void		pair(const Edge& edge)			const	;
 	void		replaceRegion(riterator r,
 				      const Edge& edgeE)	const	;
@@ -107,8 +108,7 @@ class Segmentation
 
     bool		reduce(Edge& edge)				;
     Edge		kill(Edge& edge)				;
-    Edge		make(const Edge& edge0,
-			     const Edge& edge1, const R& r)		;
+    Edge		make(Edge& edge0, Edge& edge1, const R& r)	;
 
     riterator		begin()						;
     const_riterator	begin()					const	;
@@ -194,16 +194,17 @@ Segmentation<R>::kill(Edge& edge)
 	return edge;
     }
 
+  // Remove a link between source and target vertices of edge.
     edge.vt()  = vend();
     edgeC.vt() = vend();
 
   // Replace regions
     const auto	edgeP = edge.prev();
-    const auto	rP    = edgeP.r();
+    const auto	r     = edge.r();
     edge = edgeC.prev();
-    edgeP.replaceRegion(edge.r(), edge);
-    deleteRegion(rP);
-    
+    edge.replaceRegion(edgeP.r(), edgeP);
+    deleteRegion(r);
+
     reduce(edgeP);
     reduce(edge);
 
@@ -211,47 +212,36 @@ Segmentation<R>::kill(Edge& edge)
 }
 
 template <class R> typename Segmentation<R>::Edge
-Segmentation<R>::make(const Edge& edge0, const Edge& edge1, const R& v)
+Segmentation<R>::make(Edge& edge0, Edge& edge1, const R& r)
 {
-    using namespace	std;
-
-  // edge0とedge1が始点を共有しているかチェック．
+  // Check whether edge0 and edge1 share their parent region.
     if (!edge0.commonRegion(edge1))
-	throw domain_error("TU::Segmentation<R, V, 3u>::make(): Given two edges have no common region!");
+	throw std::domain_error("Segmentation<R, V, 3u>::make(): Given two edges have no common region!");
 
-  // edge0とedge1が同一でないかチェック．
+  // Check whether edge0 and edge1 are different.
     if (edge0 == edge1)
-	throw domain_error("TU::Segmentation<R, V, 3u>::make(): Given two edges are identical!");
+	throw std::domain_error("Segmentation<R, V, 3u>::make(): Given two edges are identical!");
 
-  // 新しい領域を作る．
-    riterator	rnew = newRegion(v);
+  // Forward edge0/edge1 to next/previous link.
+    edge0._e = (edge0._e == 3 ? 0 : edge0._e + 1);
+    if (edge0.vt() != vend())
+	throw std::domain_error("Segmentation<R, V, 3u>::make(): edge0._v[" +
+				std::to_string(edge0._e) +
+				"] is already occupied!");
+    edge1._e = (edge1._e == 0 ? 3 : edge1._e - 1);
+    if (edge1.vt() != vend())
+	throw std::domain_error("Segmentation<R, V, 3u>::make(): edge1._v[" +
+				std::to_string(edge1._e) +
+				"] is already occupied!");
 
-  // 新しい頂点を2つ作る．
-    riterator	rp[3];
-    rp[0] = rnew;
-    rp[1] = edge0.r();
-    rp[2] = edge0.next().r();
-    viterator	v = newVertex(V(rp, vend()));
-    rp[0] = edge1.r();
-    rp[1] = rnew;
-    rp[2] = edge1.next().r();
-    viterator	vC = newVertex(V(rp, vend()));
+  // Make a link between source vertices of edge0 and edge1.
+    edge0.pair(edge1);
 
-  // edge0の始点を置き換える前にedge0とedge1の裏を保持しておく．
-    Edge	edge0C(edge0.conj()), edge1C(edge1.conj());
+  // Create a new region and make it a parent of vertices surrounding it.
+    const auto	rnew = newRegion(r);
+    edge0.replaceRegion(rnew, edge0);
 
-  // [edge0, edge1)の範囲の辺の始点を新しい領域に置き換える.
-    edge0.replaceRegion(rnew, edge1);
-
-  // winged-edge構造を作る．
-    Edge	edge(v), edgeC(vC);
-    edge.pair(edgeC);
-    (--edge ).pair(edge0);
-    (--edge ).pair(edge0C);
-    (--edgeC).pair(edge1);
-    (--edgeC).pair(edge1C);
-
-    return --edge;
+    return edge0;
 }
 
 template <class R> inline typename Segmentation<R>::riterator
@@ -463,6 +453,7 @@ Segmentation<R>::Edge::conj() const
     return ~edge;
 }
 
+// Private member functions
 template <class R> inline
 Segmentation<R>::Edge::Edge(viterator v, viterator vend)
     :_v(v), _e(0), _vend(vend)
@@ -477,14 +468,8 @@ Segmentation<R>::Edge::r() const
     return _v->_r[_e];
 }
 
-template <class R> typename Segmentation<R>::viterator
-Segmentation<R>::Edge::vt() const
-{
-    return _v->_v[_e];
-}
-
 template <class R> typename Segmentation<R>::viterator&
-Segmentation<R>::Edge::vt()
+Segmentation<R>::Edge::vt() const
 {
     return _v->_v[_e];
 }
