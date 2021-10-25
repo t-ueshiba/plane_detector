@@ -28,39 +28,31 @@ class Detector
     using image_p	= sensor_msgs::ImageConstPtr;
     using sync_policy_t	= message_filters::sync_policies::
 			      ApproximateTime<camera_info_t, image_t, image_t>;
-    template <class T>
-    using point3_t	= cv::Vec<T, 3>;
 
     template <class T>
     class PointCloud
     {
       public:
 	using value_t	= T;
+	using vector3_t	= cv::Vec<T, 3>;
+      //using vector3_t	= Eigen::Matrix<T, 3, 1>;
 
       public:
 	void	resize(int h, int w)
 		{
 		    _h = h;
 		    _w = w;
-		    _vertices.resize(_h * _w);
+		    _points.resize(_h * _w);
 		}
 	auto	height()		const	{ return _h; }
 	auto	width()			const	{ return _w; }
-	bool	get(int v, int u, T& x, T& y, T& z) const
-		{
-		    const auto	i = v * _w + u;
-		    z = _vertices[i][2];
-		    if (z == 0 || std::isnan(z))
-			return false;
-		    x = _vertices[i][0];
-		    y = _vertices[i][1];
-		    return true;
-		}
-	auto	begin()				{ return _vertices.begin(); }
+	const vector3_t&
+		get(int v, int u)	const	{ return _points[v*_w + u]; }
+	auto	begin()				{ return _points.begin(); }
 
       private:
-	int				_h, _w;
-	std::vector<point3_t<T> >	_vertices; // 3D vertices
+	int			_h, _w;
+	std::vector<vector3_t>	_points; // 3D vertices
     };
 
     using cloud_t	= PointCloud<double>;

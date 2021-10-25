@@ -52,6 +52,11 @@ struct ImagePointCloud
 		    y = vertices[pixIdx][1];
 		    return true;
 		}
+    inline bool	get(int row, int col, VertexType& vertex) const
+		{
+		    vertex = vertices[row * w + col];
+		    return (vertex(2) != 0 && !_isnan(vertex(2)));
+		}
 };
 
 // Data for sum of points on a same plane

@@ -69,6 +69,7 @@ class PlaneFitter
 
   private:
     using value_t	= typename CLOUD::value_t;
+    using vector3_t	= typename CLOUD::vector3_t;
     using plane_seg_t	= PlaneSeg<value_t>;
     using plane_seg_p	= typename plane_seg_t::Ptr;
     using plane_seg_sp	= typename plane_seg_t::shared_ptr;
@@ -444,9 +445,9 @@ class PlaneFitter
 		if (blkid >= 0 && _blkMap[blkid] >= 0)
 		    continue; //not in "black" block
 
-		value_t	pt[3] = {0};
-		float	cdist = -1;
-		if (_cloud->get(cy, cx, pt[0], pt[1], pt[2]) &&
+		const auto&	pt = _cloud->get(cy, cx);
+		float		cdist = -1;
+		if (is_valid(pt(2)) &&
 		    std::pow(cdist = float(std::abs(pl.signedDist(pt))), 2)
 		    < 9*pl._mse + 1e-5) //point-plane distance within 3*std
 		{
