@@ -35,11 +35,7 @@ class Segmentation
 	friend class	Edge;
 
       public:
-#ifndef TU_MESH_DEBUG
 	Vertex(riterator r[], viterator vend)				;
-#else
-	Vertex(riterator r[], viterator vend, size_t vn)		;
-#endif
 
 	size_t		valence()				const	;
 
@@ -62,11 +58,6 @@ class Segmentation
 					<< std::endl;
 			    return out;
 			}
-
-#ifdef TU_MESH_DEBUG
-      public:
-	const size_t	vnum;
-#endif
     };
 
     class Edge
@@ -114,9 +105,6 @@ class Segmentation
     const_riterator	begin()					const	;
     riterator		end()						;
     const_riterator	end()					const	;
-#ifdef TU_MESH_DEBUG
-    std::ostream&	showTopology(std::ostream& out)		const	;
-#endif
 
   private:
     viterator		vend()					const	;
@@ -320,12 +308,7 @@ Segmentation<R>::deleteVertex(viterator v)
 *  class Segmentation<R>::Vertex					*
 ************************************************************************/
 template <class R> inline
-#ifndef TU_MESH_DEBUG
 Segmentation<R>::Vertex::Vertex(riterator r[])
-#else
-Segmentation<R>::Vertex::Vertex(riterator r[], size_t fn)
-    :vnum(fn)
-#endif
 {
     for (size_t e = 0; e < 4; ++e)
 	_r[e] = r[e];
@@ -371,7 +354,7 @@ Segmentation<R>::Edge::operator !=(const Edge& edge) const
 template <class R> bool
 Segmentation<R>::Edge::commonRegion(const Edge& edge) const
 {
-    Edge	tmp(*this);
+    auto	tmp = *this;
     do
     {
 	if (tmp == edge)
@@ -435,25 +418,27 @@ Segmentation<R>::Edge::operator ~()
 template <class R> inline typename Segmentation<R>::Edge
 Segmentation<R>::Edge::next() const
 {
-    auto	edge(*this);
+    auto	edge = *this;
     return ++edge;
 }
 
 template <class R> inline typename Segmentation<R>::Edge
 Segmentation<R>::Edge::prev() const
 {
-    auto	edge(*this);
+    auto	edge = *this;
     return --edge;
 }
 
 template <class R> typename Segmentation<R>::Edge
 Segmentation<R>::Edge::conj() const
 {
-    auto	edge(*this);
+    auto	edge = *this;
     return ~edge;
 }
 
-// Private member functions
+/*
+ * Private member functions
+ */
 template <class R> inline
 Segmentation<R>::Edge::Edge(viterator v, viterator vend)
     :_v(v), _e(0), _vend(vend)
