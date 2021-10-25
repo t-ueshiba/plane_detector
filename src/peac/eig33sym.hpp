@@ -29,7 +29,7 @@
 // Note:
 // If you use dsyevh3 library [http://www.mpi-hd.mpg.de/personalhomes/globes/3x3/],
 // this function can be accelerated by uncommenting the following line
-//#define USE_DSYEVH3
+#define USE_DSYEVH3
 //
 #ifdef USE_DSYEVH3
 	#include "dsyevh3/dsyevh3.h"
