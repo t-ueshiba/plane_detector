@@ -35,17 +35,44 @@ class Segmentation
 	friend class	Edge;
 
       public:
-	Vertex(riterator r[], viterator vend)				;
-
-	size_t		valence()				const	;
+			Vertex(riterator r[], viterator vend)
+			{
+			    for (size_t e = 0; e < 4; ++e)
+				_r[e] = r[e];
+			}
+	
+	size_t		valence(viterator vend) const
+			{
+			    size_t	n = 0;
+			    for (auto vt : _v)
+				if (vt != vend)
+				    ++n;
+			    return n;
+			}
+	int		x()				const	{ return _x; }
+	int		y()				const	{ return _y; }
 
       private:
-	viterator	self(viterator vend)			const	;
+	viterator	self(viterator vend) const
+			{
+			    for (auto vt : _v)
+				if (vt != vend)
+				{
+				    for (auto v : vt->_v)
+					if (v != vend && &(*v) == this)
+					    return v;
+			    
+				    throw std::runtime_error("Segmentation<R>::Vertex::self(): Internal error!");
+				}
+			    return vend;
+			}
 
       private:
 	riterator	_r[4];
 	viterator	_v[4];
-
+	int		_x;
+	int		_y;
+	
 	friend std::ostream&
 			operator <<(std::ostream& out, const Vertex& v)
 			{
@@ -63,29 +90,90 @@ class Segmentation
     class Edge
     {
       public:
-	Edge(const Vertex& v, viterator vend)				;
+			Edge(const Vertex& v, viterator vend)
+			    :Edge(vertex.self(vend), vend)		{}
 
-	bool		operator ==(const Edge& edge)		const	;
-	bool		operator !=(const Edge& edge)		const	;
-	bool		commonRegion(const Edge& edge)		const	;
-	size_t		valence()				const	;
-	Edge&		operator ++()					;
-	Edge&		operator --()					;
-	Edge&		operator ~()					;
-	Edge		next()					const	;
-	Edge		prev()					const	;
-	Edge		conj()					const	;
+	bool		operator ==(const Edge& edge) const
+			{
+			    return (_e == edge._e) && (_v == edge._v);
+			}
+	bool		operator !=(const Edge& edge) const
+			{
+			    return !(*this == edge);
+			}
+	bool		commonRegion(const Edge& edge) const
+			{
+			    auto	tmp = *this;
+			    do
+			    {
+				if (tmp == edge)
+				    return true;
+			    } while (~(--tmp) != *this);
+		    
+			    return false;
+			}
+	size_t		valence() const
+			{
+			    return _v->valence(_vend);
+			}
+	Edge&		operator ++()
+			{
+			    do
+			    {
+				_e = (_e == 3 ? 0 : _e + 1);
+			    } while (vt() == _vend);
+
+			    return *this;
+			}
+	Edge&		operator --()
+			{
+			    do
+			    {
+				_e = (_e == 0 ? 3 : _e - 1);
+			    } while (vt() == _vend);
+
+			    return *this;
+			}
+	Edge&		operator ~()
+			{
+			    const auto	v = _v;
+			    _v = vt();
+			    for (_e = 0; _e < 4; ++_e)
+				if (vt() == v)
+				    return *this;
+
+			    throw std::runtime_error("Segmentation<R>::Edge::operator ~(): Internal error!");
+			    return *this;
+			}
+	Edge		next()		const	{ return ++Edge(*this); }
+	Edge		prev()		const	{ return --Edge(*this); }
+	Edge		conj()		const	{ return  ~Edge(*this); }
 
 	friend class	Segmentation;
 
       private:
-	Edge(viterator v, viterator vend)				;
+			Edge(viterator v, viterator vend)
+			    :_v(v), _e(0), _vend(vend)
+			{
+			    while (vt() == _vend)
+				++_e;
+			}
 
-	riterator	r()					const	;
-	viterator&	vt()					const	;
-	void		pair(const Edge& edge)			const	;
-	void		replaceRegion(riterator r,
-				      const Edge& edgeE)	const	;
+	riterator	r()		 const	{ return _v->_r[_e]; }
+	viterator&	vt()		 const	{ return _v->_v[_e]; }
+	void		pair(const Edge& edge) const
+			{
+			    vt() = edge._v;
+			    edge.vt() = _v;
+			}
+	void		replaceRegion(riterator r, const Edge& edgeE) const
+			{
+			    auto	edge = *this;
+			    do
+			    {
+				edge._v->_r[edge._e] = r;
+			    } while (--(~edge) != edgeE);
+			}
 
       private:
 	viterator	_v;		//!< 親の頂点を指す反復子
@@ -97,21 +185,24 @@ class Segmentation
     Edge		initialize(const R region[])			;
     void		clear()						;
 
-    bool		reduce(Edge& edge)				;
+    Edge		split(Edge& edge, const Vertex& vertex)		;
+    bool		merge(Edge& edge)				;
     Edge		kill(Edge& edge)				;
     Edge		make(Edge& edge0, Edge& edge1, const R& r)	;
 
-    riterator		begin()						;
-    const_riterator	begin()					const	;
-    riterator		end()						;
-    const_riterator	end()					const	;
+    riterator		begin()			{ return _regions.begin(); }
+    const_riterator	begin()		const	{ return _regions.begin(); }
+    riterator		end()			{ return _regions.end(); }
+    const_riterator	end()		const	{ return _regions.end(); };
 
   private:
-    viterator		vend()					const	;
-    riterator		newRegion(const R& r)				;
-    viterator		newVertex(const V& v)				;
-    void		deleteRegion(riterator r)			;
-    void		deleteVertex(viterator f)			;
+    viterator	vend()			const	{ return _vertices.vend() }
+    riterator	newRegion(const R& region)	{ _regions.push_front(region);
+						  return _regions.begin(); }
+    viterator	newVertex(const Vertex& vertex)	{ _vertices.push_front(vertex);
+						  return _vertices.begin(); }
+    void	deleteRegion(riterator r)	{ _regions.erase(r); }
+    void	deleteVertex(viterator v)	{ _vertices.erase(v); }
 
   private:
     std::list<R>	_regions;			//!< 領域のリスト
@@ -151,8 +242,16 @@ Segmentation<R>::clear()
     _vertices.clear();
 }
 
+template <class R> typename Segmentation<R>::Edge
+Segmentation<R>::split(Edge& edge, const Vertex& vertex)
+{
+    const auto	v = newVertex(vertex);
+    
+    
+}
+
 template <class R> bool
-Segmentation<R>::reduce(Edge& edge)
+Segmentation<R>::merge(Edge& edge)
 {
     if (edge.valence() == 2)
     {
@@ -232,125 +331,9 @@ Segmentation<R>::make(Edge& edge0, Edge& edge1, const R& r)
     return edge0;
 }
 
-template <class R> inline typename Segmentation<R>::riterator
-Segmentation<R>::begin()
-{
-    return _regions.begin();
-}
-
-template <class P> inline typename Segmentation<R>::const_riterator
-Segmentation<R>::begin() const
-{
-    return _regions.begin();
-}
-
-template <class R> inline typename Segmentation<R>::riterator
-Segmentation<R>::end()
-{
-    return _regions.end();
-}
-
-template <class R> inline typename Segmentation<R>::const_riterator
-Segmentation<R>::end() const
-{
-    return _regions.end();
-}
-
-#ifdef TU_MESH_DEBUG
-template <class R> std::ostream&
-Segmentation<R>::showTopology(std::ostream& out) const
-{
-    for (const auto& v : _vertices)
-    {
-	out << "Vertex[" << v->vnum << "]:";
-	for (size_t e = 0; e < 4; ++e)
-	    out << ' ' << v.v(e).vnum;
-	out << std::endl;
-    }
-
-    return out;
-}
-#endif
-
-template <class R> inline typename Segmentation<R>::viterator
-Segmentation<R>::vend() const
-{
-    _vertices.end();
-}
-
-template <class R> inline typename Segmentation<R>::riterator
-Segmentation<R>::newRegion(const R& r)
-{
-    _regions.push_front(r);
-    return _regions.begin();
-}
-
-template <class R> inline typename Segmentation<R>::viterator
-Segmentation<R>::newVertex(const V& v)
-{
-    _vertices.push_front(v);
-    return _vertices.begin();
-}
-
-template <class R> inline void
-Segmentation<R>::deleteRegion(riterator r)
-{
-    _regions.erase(r);
-}
-
-template <class R> inline void
-Segmentation<R>::deleteVertex(viterator v)
-{
-    _vertices.erase(v);
-}
-
-/************************************************************************
-*  class Segmentation<R>::Vertex					*
-************************************************************************/
-template <class R> inline
-Segmentation<R>::Vertex::Vertex(riterator r[])
-{
-    for (size_t e = 0; e < 4; ++e)
-	_r[e] = r[e];
-}
-
-template <class R> typename Segmentation<R>::viterator
-Segmentation<R>::Vertex::self(viterator vend) const
-{
-    for (auto vt : _v)
-	if (vt != vend)
-	{
-	    for (auto v : vt->_v)		// vcのe番目の辺を介して
-		if (v != vend && &(*v) == this)	// この頂点を指していたら
-		    return v;			// vがこの頂点への反復子．
-
-	    throw std::runtime_error("Segmentation<R>::Vertex::self(): Internal error!");
-	}
-
-    return vend;
-}
-
 /************************************************************************
 *  class Segmentation<R>::Edge						*
 ************************************************************************/
-template <class R> inline
-Segmentation<R>::Edge::Edge(const Vertex& vertex, viterator vend)
-    :Edge(vertex.self(vend), vend)
-{
-}
-
-template <class R> inline bool
-Segmentation<R>::Edge::operator ==(const Edge& edge) const
-{
-    return (_e == edge._e) && (_v == edge._v);
-}
-
-template <class R> inline bool
-Segmentation<R>::Edge::operator !=(const Edge& edge) const
-{
-    return !(*this == edge);
-}
-
 template <class R> bool
 Segmentation<R>::Edge::commonRegion(const Edge& edge) const
 {
@@ -364,116 +347,5 @@ Segmentation<R>::Edge::commonRegion(const Edge& edge) const
     return false;
 }
 
-template <class R> size_t
-Segmentation<R>::Edge::valence() const
-{
-    size_t	n = 0;
-    for (size_t e = 0; e < 4; ++e)
-	if (_v->_v[e] != _vend)
-	    ++n;
-    return n;
-}
-
-template <class R> inline typename Segmentation<R>::Edge&
-Segmentation<R>::Edge::operator ++()
-{
-    do
-    {
-	if (_e == 3)
-	    _e = 0;
-	else
-	    ++_e;
-    } while (vt() == _vend);
-
-    return *this;
-}
-
-template <class R> inline typename Segmentation<R>::Edge&
-Segmentation<R>::Edge::operator --()
-{
-    do
-    {
-	if (_e == 0)
-	    _e = 3;
-	else
-	    --_e;
-    } while (vt() == _vend);
-
-    return *this;
-}
-
-template <class R> inline typename Segmentation<R>::Edge&
-Segmentation<R>::Edge::operator ~()
-{
-    const auto	v = _v;
-    _v = vt();
-    for (_e = 0; _e < 4; ++_e)
-	if (vt() == v)
-	    return *this;
-
-    throw std::runtime_error("Segmentation<R>::Edge::operator ~(): Internal error!");
-    return *this;
-}
-
-template <class R> inline typename Segmentation<R>::Edge
-Segmentation<R>::Edge::next() const
-{
-    auto	edge = *this;
-    return ++edge;
-}
-
-template <class R> inline typename Segmentation<R>::Edge
-Segmentation<R>::Edge::prev() const
-{
-    auto	edge = *this;
-    return --edge;
-}
-
-template <class R> typename Segmentation<R>::Edge
-Segmentation<R>::Edge::conj() const
-{
-    auto	edge = *this;
-    return ~edge;
-}
-
-/*
- * Private member functions
- */
-template <class R> inline
-Segmentation<R>::Edge::Edge(viterator v, viterator vend)
-    :_v(v), _e(0), _vend(vend)
-{
-    while (vt() == _vend)
-	++_e;
-}
-
-template <class R> typename Segmentation<R>::riterator
-Segmentation<R>::Edge::r() const
-{
-    return _v->_r[_e];
-}
-
-template <class R> typename Segmentation<R>::viterator&
-Segmentation<R>::Edge::vt() const
-{
-    return _v->_v[_e];
-}
-
-template <class R> inline void
-Segmentation<R>::Edge::pair(const Edge& edge) const
-{
-    vt() = edge._v;	// Set source of this to target of 'edge'
-    edge.vt() = _v;	// Set target of 'edge' to source of this
-}
-
-template <class R> void
-Segmentation<R>::Edge::replaceRegion(riterator r, const Edge& edgeE) const
-{
-    auto	edge = *this;
-    do
-    {
-	edge._v->_r[edge._e] = r;
-    } while (--(~edge) != edgeE)
-}
 
 }

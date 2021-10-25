@@ -443,8 +443,8 @@ class PlaneSeg
 		}
 
   private:
-    Stats			_stats;
-    T				_curvature;
+    Stats	_stats;
+    T		_curvature;
 
   public:
     int		_rid;		//root block id
