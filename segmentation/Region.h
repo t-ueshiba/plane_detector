@@ -5,9 +5,25 @@
 #pragma once
 
 #include <opencv2/core/core.hpp>
+#include "Parameters.h"
 
 namespace plane_detector
 {
+/************************************************************************
+*  global functions							*
+************************************************************************/
+template <class T> inline static bool
+depthDisContinuous(T d0, T d1, const Parameters<T>& params)
+{
+    return std::abs(d0 - d1) > params.T_dz(d0);
+}
+
+template <class T> inline static bool
+is_valid(T z)
+{
+    return (z != 0 && !std::isnan(z));
+}
+    
 /************************************************************************
 *  class Region								*
 ************************************************************************/
@@ -19,26 +35,38 @@ class Region
     using vector9_t	= cv::Vec<T, 9>;
 
   public:
-    template <class ITER>
-		Region(ITER ps, ITER pe)
-		    :_sums(), _npoints(0), _center(), _normal(), _mse(0)
-		{
-		    clear();
-		    for (auto p = ps; p != pe; ++p)
-			add(*p);
-		    fit_plane();
-		}
+		Region()
+		    :_sums(), _npoints(0), _center(), _normal(),
+		     _mse(0), _curvature(0), _valid(false)		{}
+    template <class CLOUD>
+		Region(const CLOUD& cloud, int u0, int v0, int u1, int v1,
+		       const Parameters<T>& params)			;
 
     size_t	npoints()			const	{ return _npoints; }
     T		mse()				const	{ return _mse; }
 
-    Region	merge(const Region& region)
+    T		normalSimilarity(const Region& r) const
 		{
-		    auto	new_region = *this;
-		    new_region += region.region;
-		    new_region.fit_plane();
+		    return std::abs(_normal.dot(r._normal));
+		}
 
-		    return new_region;
+    T		sdist(const vector3_t& p) const
+		{
+		    return _normal.dot(p - _center);
+		}
+
+    T		dist(const vector3_t& p) const
+		{
+		    return std::abs(sdist(p));
+		}
+
+    Region&	operator +=(const Region& r)
+		{
+		    _sums    += r._sums;
+		    _npoints += r._npoints;
+		    fit_plane();
+
+		    return *this;
 		}
 
     void	clear()
@@ -47,7 +75,8 @@ class Region
 		    _npoints = 0;
 		    _center.all(0);
 		    _normal.all(0);
-		    _mse = 0;
+		    _mse       = 0;
+		    _curvature = 0;
 		}
 
     Region&	push(const vector3_t& point)
@@ -151,6 +180,66 @@ class Region
     vector3_t	_normal;	// n: plane equation n'p=q
     T		_mse;		// mean square error
     T		_curvature;
+    bool	_valid;
 };
 
+template <class T> template <class CLOUD>
+Region<T>::Region(const CLOUD& cloud,
+		  int u0, int v0, int u1, int v1, const Parameters& params)
+    :_sums(), _npoints(0), _center(), _normal(),
+     _mse(0), _curvature(0), _valid(false)
+{
+    int		nanCnt = 0;
+    const int	nanCntTh = (v1 - v0)*(u1 - u0)/2;
+    
+    for (auto v = v0; v != v1; ++v)
+	for (auto u = u0; u != u1; ++u)
+	{
+	    const auto&	p = cloud.get(v, u);
+
+	    if (!is_valid(p(2)))
+	    {
+		if (params.initType() == Parameters::INIT_LOOSE)
+		{
+		    ++nanCnt;
+		    if (nanCnt < nanCntTh)
+			continue;
+		}
+
+		return;
+	    }
+
+	    if (v + 1 < v1)
+	    {
+		const auto&	q = cloud.get(v + 1, u);
+
+		if (is_valid(q(2)) && depthDisContinuous(p(2), q(2), params))
+		    return;
+	    }
+
+	    if (u + 1 < u1)
+	    {
+		const auto&	q = cloud.get(v, u + 1);
+
+		if (is_valid(q(2)) && depthDisContinuous(p(2), q(2), params))
+		    return;
+	    }
+
+	    push(p);
+	}
+
+    if (_npoints < 4)
+	return;
+
+    fit_plane();
+    _valid = true;
+}
+
+    
+template <class T> bool
+operator <(const Region<T>& a, const Region<T>& b)
+{
+    return a.mse() > b.mse();
+}
+    
 }

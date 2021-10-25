@@ -49,7 +49,9 @@ namespace ahc
 using ahc::utils::Timer;
 using ahc::utils::pseudocolor;
 
-
+/************************************************************************
+*  class PlaneFitter<CLOUD>						*
+************************************************************************/
 /**
  *  \brief ahc::PlaneFitter implements the Agglomerative Hierarchical Clustering based fast plane extraction
  *
@@ -88,11 +90,7 @@ class PlaneFitter
     using PlaneSegMinMSEQueue = std::priority_queue<plane_seg_sp,
 						    std::vector<plane_seg_sp>,
 						    PlaneSegMinMSECmp>;
-
   public:
-  /************************************************************************/
-  /* Public Class Functions                                               */
-  /************************************************************************/
     PlaneFitter()
 	: _cloud(nullptr),
 	  _width(0),
@@ -241,9 +239,6 @@ class PlaneFitter
   // #undef TMP_LOG_VAR
   // }
 
-  /************************************************************************/
-  /* Protected Class Functions                                            */
-  /************************************************************************/
   protected:
   /**
    *  \brief refine the coarse segmentation
@@ -419,7 +414,7 @@ class PlaneFitter
 	std::vector<float> distMap(_height*_width,
 				   std::numeric_limits<float>::max());
 
-	for (int k=0; k<(int)_rfQueue.size(); ++k)
+	for (int k = 0; k < int(_rfQueue.size()); ++k)
 	{
 	    const auto	sIdx  = _rfQueue[k].first;
 	    const auto	seedy = sIdx/_width;
@@ -428,19 +423,19 @@ class PlaneFitter
 	    const auto&	pl    = *_extractedPlanes[plid];
 
 	    int		nbs[4] = {-1};
-	    const auto	Nnbs=getValid4Neighbor(seedy, seedx,
-					       _height, _width, nbs);
+	    const auto	Nnbs = getValid4Neighbor(seedy, seedx,
+						 _height, _width, nbs);
 	    for (int itr = 0; itr < Nnbs; ++itr)
 	    {
 		const int	cIdx  = nbs[itr];
 		int&		trail = _membershipImg.at<int>(cIdx);
-		if (trail<=-6)
+		if (trail <= -6)
 		    continue; //visited from 4 neighbors already, skip
-		if (trail>=0 && trail==plid)
+		if (trail >= 0 && trail == plid)
 		    continue; //if visited by the same plane, skip
 
 		const auto	cy    = cIdx/_width;
-		const auto	cx    = cIdx-cy*_width;
+		const auto	cx    = cIdx - cy*_width;
 		const auto	blkid = getBlockIdx(cx, cy);
 		if (blkid >= 0 && _blkMap[blkid] >= 0)
 		    continue; //not in "black" block
@@ -508,7 +503,7 @@ class PlaneFitter
 	_blkMap.resize(Nh*Nw);
 
 	isValidExtractedPlane.resize(_extractedPlanes.size(), false);
-	for (int i = 0,blkid = 0; i < Nh; ++i)
+	for (int i = 0, blkid = 0; i < Nh; ++i)
 	{
 	    for (int j = 0; j < Nw; ++j, ++blkid)
 	    {
@@ -533,7 +528,7 @@ class PlaneFitter
 		    const auto	plid = _rid2plid[setid];
 		    if (nbClsAllTheSame)
 		    {
-			_blkMap[blkid]=plid;
+			_blkMap[blkid] = plid;
 			const auto	by = blkid/Nw;
 			const auto	bx = blkid - by*Nw;
 			_membershipImg(
@@ -607,7 +602,7 @@ class PlaneFitter
 		    if (j > 0)
 		    {
 			const auto	l_blkid = blkid - 1;
-			if (_blkMap[l_blkid]!=plid)
+			if (_blkMap[l_blkid] != plid)
 			{//left blk is in border
 			    const auto	spixidx = (i*_winHeight)*_width
 						+ j*_winWidth;
@@ -642,7 +637,7 @@ class PlaneFitter
 	_dirtyBlkMbship = false;
 
 	_rid2plid.clear();
-	for (int plid=0; plid < (int)_extractedPlanes.size(); ++plid)
+	for (int plid = 0; plid < int(_extractedPlanes.size()); ++plid)
 	{
 	    _rid2plid.insert(std::make_pair(_extractedPlanes[plid]->_rid,
 					    plid));
@@ -665,7 +660,7 @@ class PlaneFitter
 		if (setSize >= _minSupport)
 		{//cluster large enough
 		    const auto	plid=_rid2plid[setid];
-		    _blkMap[blkid]=plid;
+		    _blkMap[blkid] = plid;
 		    const auto	by = blkid/Nw;
 		    const auto	bx = blkid - by*Nw;
 		    _membershipImg(
@@ -689,7 +684,7 @@ class PlaneFitter
 	const auto	Nh = _height/_winHeight;
 	const auto	Nw = _width/_winWidth;
 	findBlockMembership();
-	const auto	cnt = (int)_extractedPlanes.size();
+	const auto	cnt = int(_extractedPlanes.size());
 	ret.resize(cnt);
 	for (int i = 0; i < cnt; ++i)
 	    ret[i].reserve(_extractedPlanes[i]->_N);

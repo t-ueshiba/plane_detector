@@ -40,7 +40,7 @@ class Segmentation
 			    for (size_t e = 0; e < 4; ++e)
 				_r[e] = r[e];
 			}
-	
+
 	size_t		valence(viterator vend) const
 			{
 			    size_t	n = 0;
@@ -61,7 +61,7 @@ class Segmentation
 				    for (auto v : vt->_v)
 					if (v != vend && &(*v) == this)
 					    return v;
-			    
+
 				    throw std::runtime_error("Segmentation<R>::Vertex::self(): Internal error!");
 				}
 			    return vend;
@@ -72,7 +72,7 @@ class Segmentation
 	viterator	_v[4];
 	int		_x;
 	int		_y;
-	
+
 	friend std::ostream&
 			operator <<(std::ostream& out, const Vertex& v)
 			{
@@ -109,7 +109,7 @@ class Segmentation
 				if (tmp == edge)
 				    return true;
 			    } while (~(--tmp) != *this);
-		    
+
 			    return false;
 			}
 	size_t		valence() const
@@ -159,8 +159,9 @@ class Segmentation
 				++_e;
 			}
 
-	riterator	r()		 const	{ return _v->_r[_e]; }
-	viterator&	vt()		 const	{ return _v->_v[_e]; }
+	riterator	r()		const	{ return _v->_r[_e]; }
+	viterator	vs()		const	{ return _v; }
+	viterator&	vt()		const	{ return _v->_v[_e]; }
 	void		pair(const Edge& edge) const
 			{
 			    vt() = edge._v;
@@ -173,12 +174,30 @@ class Segmentation
 			    {
 				edge._v->_r[edge._e] = r;
 			    } while (--(~edge) != edgeE);
+
+			    resetRegion();
+			}
+	void		resetRegion() const
+			{
+			    r()->setEdge(*this);
 			}
 
       private:
 	viterator	_v;		//!< 親の頂点を指す反復子
 	size_t		_e;		//!< 辺の番号
 	const viterator	_vend;
+    };
+
+    class RegionBase
+    {
+      public:
+	RegionBase(const Edge& edge)	:_edge(edge)	{}
+
+	Edge	edge()				const	{ return _edge; }
+	void	setEdge(const Edge& edge)		{ _edge = edge; }
+
+      private:
+	Edge	_edge;	// parnet edge
     };
 
   public:
@@ -246,8 +265,6 @@ template <class R> typename Segmentation<R>::Edge
 Segmentation<R>::split(Edge& edge, const Vertex& vertex)
 {
     const auto	v = newVertex(vertex);
-    
-    
 }
 
 template <class R> bool
@@ -256,10 +273,13 @@ Segmentation<R>::merge(Edge& edge)
     if (edge.valence() == 2)
     {
 	const auto	edgeC = edge.conj();
-	const auto	v     = edge.v();
+	const auto	v     = edge.vs();
 	~(++edge);
 	edge.pair(edgeC);
 	deleteVertex(v);
+
+	edge.resetRegion();
+	edgeC.resetRegion();
 
 	return true;
     }
