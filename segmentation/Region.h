@@ -79,9 +79,9 @@ class Region
 		    _curvature = 0;
 		}
 
-    Region&	push(const vector3_t& point)
+    Region&	push(const vector3_t& p)
 		{
-		    _sums += moment(point);
+		    _sums += moment(p);
 		    ++_npoints;
 
 		    return *this;

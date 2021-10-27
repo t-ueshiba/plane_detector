@@ -329,13 +329,13 @@ Segmentation<R>::make(Edge& edge0, Edge& edge1, const R& r)
     if (edge0 == edge1)
 	throw std::domain_error("Segmentation<R, V, 3u>::make(): Given two edges are identical!");
 
-  // Forward edge0/edge1 to next/previous link.
+  // Forward edge0 and edge1 to the next link.
     edge0._e = (edge0._e == 3 ? 0 : edge0._e + 1);
     if (edge0.vt() != vend())
 	throw std::domain_error("Segmentation<R, V, 3u>::make(): edge0._v[" +
 				std::to_string(edge0._e) +
 				"] is already occupied!");
-    edge1._e = (edge1._e == 0 ? 3 : edge1._e - 1);
+    edge1._e = (edge1._e == 3 ? 0 : edge1._e + 1);
     if (edge1.vt() != vend())
 	throw std::domain_error("Segmentation<R, V, 3u>::make(): edge1._v[" +
 				std::to_string(edge1._e) +
@@ -367,5 +367,4 @@ Segmentation<R>::Edge::commonRegion(const Edge& edge) const
     return false;
 }
 
-
-}
+}	// namespace plane_detector
