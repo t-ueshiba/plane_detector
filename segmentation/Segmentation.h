@@ -22,9 +22,10 @@ class Segmentation
 {
   public:
     class Vertex;
+    class Region;
 
-    using riterator	  = typename std::list<R>::iterator;
-    using const_riterator = typename std::list<R>::const_iterator;
+    using riterator	  = typename std::list<Region>::iterator;
+    using const_riterator = typename std::list<Region>::const_iterator;
     using viterator	  = typename std::list<Vertex>::iterator;
     using const_riterator = typename std::list<Vertex>::const_iterator;
 
@@ -100,17 +101,6 @@ class Segmentation
 	bool		operator !=(const Edge& edge) const
 			{
 			    return !(*this == edge);
-			}
-	bool		commonRegion(const Edge& edge) const
-			{
-			    auto	tmp = *this;
-			    do
-			    {
-				if (tmp == edge)
-				    return true;
-			    } while (~(--tmp) != *this);
-
-			    return false;
 			}
 	size_t		valence() const
 			{
@@ -188,10 +178,11 @@ class Segmentation
 	const viterator	_vend;
     };
 
-    class RegionBase
+    class Region : public R
     {
       public:
-	RegionBase(const Edge& edge)	:_edge(edge)	{}
+	Region(const R& region, const Edge& edge)
+	    :R(region), _edge(edge)			{}
 
 	Edge	edge()				const	{ return _edge; }
 	void	setEdge(const Edge& edge)		{ _edge = edge; }
@@ -207,7 +198,8 @@ class Segmentation
     Edge		split(Edge& edge, const Vertex& vertex)		;
     bool		merge(Edge& edge)				;
     Edge		kill(Edge& edge)				;
-    Edge		make(Edge& edge0, Edge& edge1, const R& r)	;
+    Edge		make(const Edge& edge0,
+			     const Edge& edge1, const R& r)		;
 
     riterator		begin()			{ return _regions.begin(); }
     const_riterator	begin()		const	{ return _regions.begin(); }
@@ -224,7 +216,7 @@ class Segmentation
     void	deleteVertex(viterator v)	{ _vertices.erase(v); }
 
   private:
-    std::list<R>	_regions;			//!< 領域のリスト
+    std::list<Region>	_regions;			//!< 領域のリスト
     std::list<Vertex>	_vertices;			//!< 頂点のリスト
 };
 
@@ -290,11 +282,9 @@ Segmentation<R>::merge(Edge& edge)
 template <class R> typename Segmentation<R>::Edge
 Segmentation<R>::kill(Edge& edge)
 {
-    const auto	edgeC	 = edge.conj();
-    const auto	valence	 = edge.valence();
-    const auto	valenceC = edgeC.valence();
+    const auto	edge1 = edge.conj();
 
-    if (valence < 3 || valenceC < 3)
+    if (edge.valence() < 3 || edge1.valence() < 3)
     {
 	std::cerr << "TU::Segmentation<R, V, 3u>::kill(): Too small valence!"
 		  << std::endl;
@@ -303,68 +293,54 @@ Segmentation<R>::kill(Edge& edge)
 
   // Remove a link between source and target vertices of edge.
     edge.vt()  = vend();
-    edgeC.vt() = vend();
+    edge1.vt() = vend();
 
   // Replace regions
-    const auto	edgeP = edge.prev();
-    const auto	r     = edge.r();
-    edge = edgeC.prev();
-    edge.replaceRegion(edgeP.r(), edgeP);
+    const auto	r = edge.r();
+    --edge;
+    --edge1;
+    edge1.replaceRegion(edge.r(), edge);
     deleteRegion(r);
 
-    reduce(edgeP);
     reduce(edge);
+    reduce(edge1);
 
-    return edgeP;
+    return edge1;
 }
 
 template <class R> typename Segmentation<R>::Edge
-Segmentation<R>::make(Edge& edge0, Edge& edge1, const R& r)
+Segmentation<R>::make(const Edge& edge0, const Edge& edge1, const R& r)
 {
   // Check whether edge0 and edge1 share their parent region.
-    if (!edge0.commonRegion(edge1))
-	throw std::domain_error("Segmentation<R, V, 3u>::make(): Given two edges have no common region!");
+    if (edge0.r() != edge1.r())
+	throw std::domain_error("Segmentation<R>::make(): Given two edges share a region!");
 
   // Check whether edge0 and edge1 are different.
     if (edge0 == edge1)
-	throw std::domain_error("Segmentation<R, V, 3u>::make(): Given two edges are identical!");
+	throw std::domain_error("Segmentation<R>::make(): Given two edges are identical!");
 
   // Forward edge0 and edge1 to the next link.
-    edge0._e = (edge0._e == 3 ? 0 : edge0._e + 1);
-    if (edge0.vt() != vend())
-	throw std::domain_error("Segmentation<R, V, 3u>::make(): edge0._v[" +
-				std::to_string(edge0._e) +
+    auto	edge = edge0;
+    edge._e = (edge._e == 3 ? 0 : edge._e + 1);
+    if (edge.vt() != vend())
+	throw std::domain_error("Segmentation<R>::make(): edge._v[" +
+				std::to_string(edge._e) +
 				"] is already occupied!");
-    edge1._e = (edge1._e == 3 ? 0 : edge1._e + 1);
-    if (edge1.vt() != vend())
-	throw std::domain_error("Segmentation<R, V, 3u>::make(): edge1._v[" +
-				std::to_string(edge1._e) +
+    auto	edgeC = edge1;
+    edgeC._e = (edgeC._e == 3 ? 0 : edgeC._e + 1);
+    if (edgeC.vt() != vend())
+	throw std::domain_error("Segmentation<R>::make(): edgeC._v[" +
+				std::to_string(edgeC._e) +
 				"] is already occupied!");
 
   // Make a link between source vertices of edge0 and edge1.
-    edge0.pair(edge1);
+    edge.pair(edgeC);
 
   // Create a new region and make it a parent of vertices surrounding it.
     const auto	rnew = newRegion(r);
-    edge0.replaceRegion(rnew, edge0);
+    edge.replaceRegion(rnew, edge);
 
-    return edge0;
-}
-
-/************************************************************************
-*  class Segmentation<R>::Edge						*
-************************************************************************/
-template <class R> bool
-Segmentation<R>::Edge::commonRegion(const Edge& edge) const
-{
-    auto	tmp = *this;
-    do
-    {
-	if (tmp == edge)
-	    return true;
-    } while (~(--tmp) != *this);
-
-    return false;
+    return edge;
 }
 
 }	// namespace plane_detector
