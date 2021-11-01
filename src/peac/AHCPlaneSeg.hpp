@@ -36,7 +36,7 @@
 #include "AHCTypes.hpp"		//shared_ptr
 #include "AHCParamSet.hpp"	//depthDisContinuous
 #include "DisjointSet.hpp"	//PlaneSeg::mergeNbsFrom
-#include "dsyevh3/dsyevh3.h"					\
+#include "eigen33.h"					\
 
 namespace ahc
 {
@@ -193,7 +193,7 @@ class PlaneSeg
 		eig33sym(T K[3][3], T V[3][3], T evals[3])
 		{
 		    T	tmpV[3][3];
-		    if (dsyevh3(K, tmpV, evals) != 0)
+		    if (!eigen33(K, tmpV, evals) != 0)
 			return false;
 
 		    int	order[] = {0, 1, 2};
