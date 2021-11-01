@@ -21,8 +21,9 @@
 #include <cmath>
 #include <limits>
 
+#define M_SQRT3	1.73205080756887729352744634151		// sqrt(3)
+
 template <class T> static inline T	square(T x) { return x*x; }
-template <class T> static constexpr T	sqrt3 = std::sqrt(T(3));
 
 template <class T> void
 cardano(const T A[3][3], T w[3])
@@ -49,7 +50,7 @@ cardano(const T A[3][3], T w[3])
     phi = (1.0/3.0) * std::atan2(std::sqrt(std::abs(phi)), q);
 
     const T	c = sqrt_p*std::cos(phi);
-    const T	s = (1.0/sqrt3<T>)*sqrt_p*std::sin(phi);
+    const T	s = (1.0/M_SQRT3)*sqrt_p*std::sin(phi);
 
     w[1]  = (1.0/3.0)*(m - c);
     w[2]  = w[1] + s;
