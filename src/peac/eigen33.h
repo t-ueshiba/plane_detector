@@ -59,7 +59,7 @@ cardano(const T A[3][3], T w[3])
 }
 
 template <class T> void
-tridiagonal33(const T A[3][3], T Q[3][3], T d[3], T e[2])
+tridiagonal33(const T A[3][3], T Q[3][3], T d[3], T e[3])
 {
   // -----------------------------------------------------------------------
   // Reduces a symmetric 3x3 matrix to tridiagonal form by applying
@@ -127,6 +127,8 @@ tridiagonal33(const T A[3][3], T Q[3][3], T d[3], T e[2])
 	    d[i] = A[i][i];
 	e[1] = A[1][2];
     }
+
+    e[2] = 0.0;
 }
 
 template <class T> bool
@@ -144,10 +146,10 @@ qr33(const T A[3][3], T Q[3][3], T w[3])
     {
 	for (int nIter = 0; ; )
 	{
-	    int	m;
+	    int	m = l;
 	  // Check for convergence and exit iteration loop if off-diagonal
 	  // element e(l) is zero
-	    for (m = l; m <= 1; ++m)
+	    for (; ; ++m)
 	    {
 		const T	g = std::abs(w[m])+std::abs(w[m+1]);
 		if (std::abs(e[m]) + g == g)
