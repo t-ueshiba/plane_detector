@@ -153,7 +153,10 @@ qr33(const T A[3][3], T Q[3][3], T w[3])
 	    {
 		const T	g = std::abs(w[m])+std::abs(w[m+1]);
 		if (std::abs(e[m]) + g == g)
+		{
+		    e[m] = 0;
 		    break;
+		}
 	    }
 	    if (m == l)
 		break;
@@ -172,42 +175,41 @@ qr33(const T A[3][3], T Q[3][3], T w[3])
 	    T	s = 1.0;
 	    T	c = 1.0;
 	    T	p = 0.0;
-	    for (int i = m - 1; i >= l; --i)
+	    while (--m >= l)
 	    {
-		const T	f = s * e[i];
-		const T	b = c * e[i];
+		const T	f = s * e[m];
+		const T	b = c * e[m];
 		if (std::abs(f) > std::abs(g))
 		{
 		    c      = g / f;
 		    r      = std::sqrt(square(c) + 1.0);
-		    e[i+1] = f * r;
+		    e[m+1] = f * r;
 		    c     *= (s = 1.0/r);
 		}
 		else
 		{
 		    s      = f / g;
 		    r      = std::sqrt(square(s) + 1.0);
-		    e[i+1] = g * r;
+		    e[m+1] = g * r;
 		    s     *= (c = 1.0/r);
 		}
 
-		g = w[i+1] - p;
-		r = (w[i] - g)*s + 2.0*c*b;
+		g = w[m+1] - p;
+		r = (w[m] - g)*s + 2.0*c*b;
 		p = s * r;
-		w[i+1] = g + p;
+		w[m+1] = g + p;
 		g = c*r - b;
 
 	      // Form eigenvectors
 		for (int k = 0; k < 3; ++k)
 		{
-		    const auto	t = Q[k][i+1];
-		    Q[k][i+1] = s*Q[k][i] + c*t;
-		    Q[k][i]   = c*Q[k][i] - s*t;
+		    const auto	t = Q[k][m+1];
+		    Q[k][m+1] = s*Q[k][m] + c*t;
+		    Q[k][m]   = c*Q[k][m] - s*t;
 		}
 	    }
 	    w[l] -= p;
 	    e[l]  = g;
-	    e[m]  = 0.0;
 	}
     }
 
