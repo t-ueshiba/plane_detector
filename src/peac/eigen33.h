@@ -142,74 +142,77 @@ qr33(const T A[3][3], T Q[3][3], T w[3])
   // with the QL method
   //
   // Loop over all off-diagonal elements
-    for (int l = 0; l < 2; ++l)
+    for (int n = 0; n < 2; ++n)	// l = 0, 1
     {
 	for (int nIter = 0; ; )
 	{
-	    int	m = l;
+	    int	i = n;
 	  // Check for convergence and exit iteration loop if off-diagonal
-	  // element e(l) is zero
-	    for (; ; ++m)
+	  // element e(n) is zero
+	    for (; i < 2; ++i)
 	    {
-		const T	g = std::abs(w[m])+std::abs(w[m+1]);
-		if (std::abs(e[m]) + g == g)
+		const T	g = std::abs(w[i])+std::abs(w[i+1]);
+		if (std::abs(e[i]) + g == g)
 		{
-		    e[m] = 0;
+		    e[i] = 0;
 		    break;
 		}
 	    }
-	    if (m == l)
+	    if (i == n)
 		break;
 
 	    if (nIter++ >= 30)
 		return false;
 
-	  // Calculate g = d_m - k
-	    T	g = (w[l+1] - w[l]) / (e[l] + e[l]);
+	  // [n = 0]: i = 1, 2; [n = 1]: i = 2	    
+	    T	g = (w[n+1] - w[n]) / (e[n] + e[n]);
 	    T	r = std::sqrt(square(g) + 1.0);
 	    if (g > 0)
-		g = w[m] - w[l] + e[l]/(g + r);
+		g = w[i] - w[n] + e[n]/(g + r);
 	    else
-		g = w[m] - w[l] + e[l]/(g - r);
+		g = w[i] - w[n] + e[n]/(g - r);
 
 	    T	s = 1.0;
 	    T	c = 1.0;
 	    T	p = 0.0;
-	    while (--m >= l)
+
+	  // [n = 0, i = 1]: i = 0; [n = 0, i = 2]: i = 1, 0
+	  // [n = 1, i = 2]: i = 1
+	    while (--i >= n)
 	    {
-		const T	f = s * e[m];
-		const T	b = c * e[m];
+		const T	f = s * e[i];
+		const T	b = c * e[i];
 		if (std::abs(f) > std::abs(g))
 		{
 		    c      = g / f;
 		    r      = std::sqrt(square(c) + 1.0);
-		    e[m+1] = f * r;
+		    e[i+1] = f * r;
 		    c     *= (s = 1.0/r);
 		}
 		else
 		{
 		    s      = f / g;
 		    r      = std::sqrt(square(s) + 1.0);
-		    e[m+1] = g * r;
+		    e[i+1] = g * r;
 		    s     *= (c = 1.0/r);
 		}
 
-		g = w[m+1] - p;
-		r = (w[m] - g)*s + 2.0*c*b;
+		g = w[i+1] - p;
+		r = (w[i] - g)*s + 2.0*c*b;
 		p = s * r;
-		w[m+1] = g + p;
+		w[i+1] = g + p;
 		g = c*r - b;
 
 	      // Form eigenvectors
 		for (int k = 0; k < 3; ++k)
 		{
-		    const auto	t = Q[k][m+1];
-		    Q[k][m+1] = s*Q[k][m] + c*t;
-		    Q[k][m]   = c*Q[k][m] - s*t;
+		    const auto	t = Q[k][i+1];
+		    Q[k][i+1] = s*Q[k][i] + c*t;
+		    Q[k][i]   = c*Q[k][i] - s*t;
 		}
 	    }
-	    w[l] -= p;
-	    e[l]  = g;
+	    w[n] -= p;
+	    e[n]  = g;
 	}
     }
 
