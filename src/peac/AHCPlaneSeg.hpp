@@ -152,13 +152,13 @@ class PlaneSeg
 		  // K[1][0] = K[0][1];
 		  // K[2][0] = K[0][2];
 		  // K[2][1] = K[1][2];
-		    T	V[3][3], evals[3];
-		    if (!eig33sym(K, V, evals))	// first eval is the least one
+		    T	Vt[3][3], evals[3];
+		    if (!eig33sym(K, Vt, evals)) // first eval is the least one
 			return false;
 
-		    normal(0) = V[0][0];
-		    normal(1) = V[1][0];
-		    normal(2) = V[2][0];
+		    normal(0) = Vt[0][0];
+		    normal(1) = Vt[0][1];
+		    normal(2) = Vt[0][2];
 
 		  // enforce dot(normal,center)<00 so normal always
 		  // points towards camera
@@ -190,10 +190,10 @@ class PlaneSeg
 		}
 
 	static bool
-		eig33sym(T K[3][3], T V[3][3], T evals[3])
+		eig33sym(T K[3][3], T Vt[3][3], T evals[3])
 		{
-		    T	tmpV[3][3];
-		    if (!eigen33(K, tmpV, evals) != 0)
+		    T	tmpVt[3][3];
+		    if (!eigen33(K, tmpVt, evals) != 0)
 			return false;
 
 		    int	order[] = {0, 1, 2};
@@ -204,15 +204,15 @@ class PlaneSeg
 				std::swap(evals[i], evals[j]);
 				std::swap(order[i], order[j]);
 			    }
-		    V[0][0] = tmpV[0][order[0]];
-		    V[0][1] = tmpV[0][order[1]];
-		    V[0][2] = tmpV[0][order[2]];
-		    V[1][0] = tmpV[1][order[0]];
-		    V[1][1] = tmpV[1][order[1]];
-		    V[1][2] = tmpV[1][order[2]];
-		    V[2][0] = tmpV[2][order[0]];
-		    V[2][1] = tmpV[2][order[1]];
-		    V[2][2] = tmpV[2][order[2]];
+		    Vt[0][0] = tmpVt[order[0]][0];
+		    Vt[0][1] = tmpVt[order[0]][1];
+		    Vt[0][2] = tmpVt[order[0]][2];
+		    Vt[1][0] = tmpVt[order[1]][0];
+		    Vt[1][1] = tmpVt[order[1]][1];
+		    Vt[1][2] = tmpVt[order[1]][2];
+		    Vt[2][0] = tmpVt[order[2]][0];
+		    Vt[2][1] = tmpVt[order[2]][1];
+		    Vt[2][2] = tmpVt[order[2]][2];
 
 		    return true;
 		}

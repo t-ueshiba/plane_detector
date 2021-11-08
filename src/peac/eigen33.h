@@ -59,24 +59,24 @@ cardano(const T A[3][3], T w[3])
 }
 
 template <class T> void
-tridiagonal33(const T A[3][3], T Q[3][3], T d[3], T e[3])
+tridiagonal33(const T A[3][3], T Qt[3][3], T d[3], T e[2])
 {
   // -----------------------------------------------------------------------
   // Reduces a symmetric 3x3 matrix to tridiagonal form by applying
   // (unitary) Householder transformations:
-  //            [ d[0]  e[0]       ]
-  //    A = Q . [ e[0]  d[1]  e[1] ] . Q^T
-  //            [       e[1]  d[2] ]
+  //             [ d[0]  e[0]       ]
+  //    A = Qt . [ e[0]  d[1]  e[1] ] . Q
+  //             [       e[1]  d[2] ]
   // The function accesses only the diagonal and upper triangular parts of
   // A. The access is read-only.
   // -----------------------------------------------------------------------
 
-  // Initialize Q to the identitity matrix
+  // Initialize Qt to the identitity matrix
     for (int i = 0; i < 3; ++i)
     {
-	Q[i][i] = 1.0;
-	for (int j=0; j < i; ++j)
-	    Q[i][j] = Q[j][i] = 0.0;
+	Qt[i][i] = 1.0;
+	for (int j = 0; j < i; ++j)
+	    Qt[i][j] = Qt[j][i] = 0.0;
     }
 
   // Bring first row and column to the desired form
@@ -110,12 +110,12 @@ tridiagonal33(const T A[3][3], T Q[3][3], T d[3], T e[3])
 	d[1] = A[1][1] - 2.0*q[1]*u[1];
 	d[2] = A[2][2] - 2.0*q[2]*u[2];
 
-      // Store inverse Householder transformation in Q
-	for (int j = 1; j < 3; ++j)
+      // Store inverse Householder transformation in Qt
+	for (int i = 1; i < 3; ++i)
 	{
-	    f = omega * u[j];
-	    for (int i = 1; i < 3; ++i)
-		Q[i][j] = Q[i][j] - f*u[i];
+	    f = omega * u[i];
+	    for (int j = 1; j < 3; ++j)
+		Qt[i][j] = Qt[i][j] - f*u[j];
 	}
 
       // Calculate updated A[1][2] and store it in e[1]
@@ -127,16 +127,14 @@ tridiagonal33(const T A[3][3], T Q[3][3], T d[3], T e[3])
 	    d[i] = A[i][i];
 	e[1] = A[1][2];
     }
-
-    e[2] = 0.0;
 }
 
 template <class T> bool
-qr33(const T A[3][3], T Q[3][3], T w[3])
+qr33(const T A[3][3], T Qt[3][3], T w[3])
 {
   // Transform A to real tridiagonal form by the Householder method
     T e[3];                   // The third element is used only as temporary
-    tridiagonal33(A, Q, w, e);
+    tridiagonal33(A, Qt, w, e);
 
   // Calculate eigensystem of the remaining real symmetric tridiagonal matrix
   // with the QL method
@@ -151,7 +149,7 @@ qr33(const T A[3][3], T Q[3][3], T w[3])
 	  // element e(n) is zero
 	    for (; i < 2; ++i)
 	    {
-		const T	g = std::abs(w[i])+std::abs(w[i+1]);
+		const auto	g = std::abs(w[i]) + std::abs(w[i+1]);
 		if (std::abs(e[i]) + g == g)
 		{
 		    e[i] = 0;
@@ -165,54 +163,50 @@ qr33(const T A[3][3], T Q[3][3], T w[3])
 		return false;
 
 	  // [n = 0]: i = 1, 2; [n = 1]: i = 2	    
-	    T	g = (w[n+1] - w[n]) / (e[n] + e[n]);
-	    T	r = std::sqrt(square(g) + 1.0);
-	    if (g > 0)
-		g = w[i] - w[n] + e[n]/(g + r);
-	    else
-		g = w[i] - w[n] + e[n]/(g - r);
+	    const auto	t = (w[n+1] - w[n])/(e[n] + e[n]);
+	    const auto	r = std::sqrt(square(t) + T(1));
+	    e[i] = w[i] - w[n] + e[n]/(t + (t > 0 ? r : -r));
 
-	    T	s = 1.0;
-	    T	c = 1.0;
-	    T	p = 0.0;
-
+	    auto	s = T(1);
+	    auto	c = T(1);
 	  // [n = 0, i = 1]: i = 0; [n = 0, i = 2]: i = 1, 0
 	  // [n = 1, i = 2]: i = 1
 	    while (--i >= n)
 	    {
-		const T	f = s * e[i];
-		const T	b = c * e[i];
-		if (std::abs(f) > std::abs(g))
+		const auto	x = e[i+1];
+		const auto	y = s*e[i];
+		const auto	z = c*e[i];
+		if (std::abs(x) > std::abs(y))
 		{
-		    c      = g / f;
-		    r      = std::sqrt(square(c) + 1.0);
-		    e[i+1] = f * r;
-		    c     *= (s = 1.0/r);
+		    const auto	t = y/x;
+		    const auto	r = std::sqrt(square(t) + T(1));
+		    e[i+1] = x*r;
+		    c	   = T(1)/r;
+		    s      = c*t;
 		}
 		else
 		{
-		    s      = f / g;
-		    r      = std::sqrt(square(s) + 1.0);
-		    e[i+1] = g * r;
-		    s     *= (c = 1.0/r);
+		    const auto	t = x/y;
+		    const auto	r = std::sqrt(square(t) + T(1));
+		    e[i+1] = y*r;
+		    s	   = T(1)/r;
+		    c	   = s*t;
 		}
 
-		g = w[i+1] - p;
-		r = (w[i] - g)*s + 2.0*c*b;
-		p = s * r;
-		w[i+1] = g + p;
-		g = c*r - b;
-
+		const auto	v = s*(w[i] - w[i+1]) + T(2)*c*z;
+		const auto	p = s*v;
+		w[i]   -= p;
+		w[i+1] += p;
+		e[i]    = c*v - z;	// updated e[i]
+		    
 	      // Form eigenvectors
 		for (int k = 0; k < 3; ++k)
 		{
-		    const auto	t = Q[k][i+1];
-		    Q[k][i+1] = s*Q[k][i] + c*t;
-		    Q[k][i]   = c*Q[k][i] - s*t;
+		    const auto	t = Qt[i][k];
+		    Qt[i][k]   = c*t - s*Qt[i+1][k];
+		    Qt[i+1][k] = s*t + c*Qt[i+1][k];
 		}
 	    }
-	    w[n] -= p;
-	    e[n]  = g;
 	}
     }
 
@@ -220,7 +214,7 @@ qr33(const T A[3][3], T Q[3][3], T w[3])
 }
 
 template <class T> bool
-eigen33(const T A[3][3], T Q[3][3], T w[3])
+eigen33(const T A[3][3], T Qt[3][3], T w[3])
 {
   // Calculate eigenvalues
     cardano(A, w);
@@ -240,16 +234,16 @@ eigen33(const T A[3][3], T Q[3][3], T w[3])
     const T	error = 256.0 * std::numeric_limits<T>::epsilon() * square(u);
   //  error = 256.0 * DBL_EPSILON * (n0 + u) * (n1 + u);
 
-    Q[0][1] = A[0][1]*A[1][2] - A[0][2]*A[1][1];
-    Q[1][1] = A[0][2]*A[0][1] - A[1][2]*A[0][0];
-    Q[2][1] = square(A[0][1]);
+    Qt[1][0] = A[0][1]*A[1][2] - A[0][2]*A[1][1];
+    Qt[1][1] = A[0][2]*A[0][1] - A[1][2]*A[0][0];
+    Qt[1][2] = square(A[0][1]);
 
   // Calculate first eigenvector by the formula
   //   v[0] = (A - w[0]).e1 x (A - w[0]).e2
-    Q[0][0] = Q[0][1] + A[0][2]*w[0];
-    Q[1][0] = Q[1][1] + A[1][2]*w[0];
-    Q[2][0] = (A[0][0] - w[0]) * (A[1][1] - w[0]) - Q[2][1];
-    T	norm = square(Q[0][0]) + square(Q[1][0]) + square(Q[2][0]);
+    Qt[0][0] = Qt[1][0] + A[0][2]*w[0];
+    Qt[0][1] = Qt[1][1] + A[1][2]*w[0];
+    Qt[0][2] = (A[0][0] - w[0]) * (A[1][1] - w[0]) - Qt[1][2];
+    T	norm = square(Qt[0][0]) + square(Qt[0][1]) + square(Qt[0][2]);
 
   // If vectors are nearly linearly dependent, or if there might have
   // been large cancellations in the calculation of A[i][i] - w[0], fall
@@ -258,34 +252,34 @@ eigen33(const T A[3][3], T Q[3][3], T w[3])
   // not cause problems: If w[0] = w[1], then A - w[0] * I has rank 1,
   // i.e. all columns of A - w[0] * I are linearly dependent.
     if (norm <= error)
-	return qr33(A, Q, w);
+    	return qr33(A, Qt, w);
     else                      // This is the standard branch
     {
 	norm = std::sqrt(1.0 / norm);
-	for (int j=0; j < 3; ++j)
-	    Q[j][0] *= norm;
+	for (int j = 0; j < 3; ++j)
+	    Qt[0][j] *= norm;
     }
 
   // Calculate second eigenvector by the formula
   //   v[1] = (A - w[1]).e1 x (A - w[1]).e2
-    Q[0][1] = Q[0][1] + A[0][2]*w[1];
-    Q[1][1] = Q[1][1] + A[1][2]*w[1];
-    Q[2][1] = (A[0][0] - w[1]) * (A[1][1] - w[1]) - Q[2][1];
-    norm    = square(Q[0][1]) + square(Q[1][1]) + square(Q[2][1]);
+    Qt[1][0] = Qt[1][0] + A[0][2]*w[1];
+    Qt[1][1] = Qt[1][1] + A[1][2]*w[1];
+    Qt[1][2] = (A[0][0] - w[1]) * (A[1][1] - w[1]) - Qt[1][2];
+    norm    = square(Qt[1][0]) + square(Qt[1][1]) + square(Qt[1][2]);
     if (norm <= error)
-	return qr33(A, Q, w);
+  	return qr33(A, Qt, w);
     else
     {
 	norm = std::sqrt(1.0 / norm);
 	for (int j = 0; j < 3; ++j)
-	    Q[j][1] *= norm;
+	    Qt[1][j] *= norm;
     }
 
   // Calculate third eigenvector according to
   //   v[2] = v[0] x v[1]
-    Q[0][2] = Q[1][0]*Q[2][1] - Q[2][0]*Q[1][1];
-    Q[1][2] = Q[2][0]*Q[0][1] - Q[0][0]*Q[2][1];
-    Q[2][2] = Q[0][0]*Q[1][1] - Q[1][0]*Q[0][1];
+    Qt[2][0] = Qt[0][1]*Qt[1][2] - Qt[0][2]*Qt[1][1];
+    Qt[2][1] = Qt[0][2]*Qt[1][0] - Qt[0][0]*Qt[1][2];
+    Qt[2][2] = Qt[0][0]*Qt[1][1] - Qt[0][1]*Qt[1][0];
 
     return true;
 }
