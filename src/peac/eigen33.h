@@ -32,25 +32,25 @@ cardano(const T A[3][3], T w[3])
   //       | a   d   f  |
   //  A =  | d*  b   e  |
   //       | f*  e*  c  |
-    const T	de = A[0][1] * A[1][2];		// d * e
-    const T	dd = square(A[0][1]);		// d^2
-    const T	ee = square(A[1][2]);		// e^2
-    const T	ff = square(A[0][2]);		// f^2
-    const T	m  = A[0][0] + A[1][1] + A[2][2];
-    const T	c1 = (A[0][0]*A[1][1] + A[0][0]*A[2][2] + A[1][1]*A[2][2])
+    const auto	de = A[0][1] * A[1][2];		// d * e
+    const auto	dd = square(A[0][1]);		// d^2
+    const auto	ee = square(A[1][2]);		// e^2
+    const auto	ff = square(A[0][2]);		// f^2
+    const auto	m  = A[0][0] + A[1][1] + A[2][2];
+    const auto	c1 = (A[0][0]*A[1][1] + A[0][0]*A[2][2] + A[1][1]*A[2][2])
 		   - (dd + ee + ff);
-    const T	c0 = A[2][2]*dd + A[0][0]*ee + A[1][1]*ff
+    const auto	c0 = A[2][2]*dd + A[0][0]*ee + A[1][1]*ff
 		   - A[0][0]*A[1][1]*A[2][2] - 2.0 * A[0][2]*de;
 
-    const T	p      = square(m) - 3.0*c1;
-    const T	q      = m*(p - (3.0/2.0)*c1) - (27.0/2.0)*c0;
-    const T	sqrt_p = std::sqrt(std::abs(p));
+    const auto	p      = square(m) - 3.0*c1;
+    const auto	q      = m*(p - (3.0/2.0)*c1) - (27.0/2.0)*c0;
+    const auto	sqrt_p = std::sqrt(std::abs(p));
 
-    T	phi = 27.0 * (0.25*square(c1)*(p - c1) + c0*(q + 27.0/4.0*c0));
+    auto	phi = 27.0 * (0.25*square(c1)*(p - c1) + c0*(q + 27.0/4.0*c0));
     phi = (1.0/3.0) * std::atan2(std::sqrt(std::abs(phi)), q);
 
-    const T	c = sqrt_p*std::cos(phi);
-    const T	s = (1.0/M_SQRT3)*sqrt_p*std::sin(phi);
+    const auto	c = sqrt_p*std::cos(phi);
+    const auto	s = (1.0/M_SQRT3)*sqrt_p*std::sin(phi);
 
     w[1]  = (1.0/3.0)*(m - c);
     w[2]  = w[1] + s;
@@ -80,8 +80,8 @@ tridiagonal33(const T A[3][3], T Qt[3][3], T d[3], T e[2])
     }
 
   // Bring first row and column to the desired form
-    const T	h = square(A[0][1]) + square(A[0][2]);
-    const T	g = (A[0][1] > 0 ? -std::sqrt(h) : std::sqrt(h));
+    const auto	h = square(A[0][1]) + square(A[0][2]);
+    const auto	g = (A[0][1] > 0 ? -std::sqrt(h) : std::sqrt(h));
     e[0] = g;
 
     T		f = g * A[0][1];
@@ -219,20 +219,10 @@ eigen33(const T A[3][3], T Qt[3][3], T w[3])
   // Calculate eigenvalues
     cardano(A, w);
 
-  //  n0 = square(A[0][0]) + square(A[0][1]) + square(A[0][2]);
-  //  n1 = square(A[0][1]) + square(A[1][1]) + square(A[1][2]);
-
-    T	t = std::abs(w[0]), u;
-    if ((u=std::abs(w[1])) > t)
-	t = u;
-    if ((u=std::abs(w[2])) > t)
-	t = u;
-    if (t < 1.0)
-	u = t;
-    else
-	u = square(t);
-    const T	error = 256.0 * std::numeric_limits<T>::epsilon() * square(u);
-  //  error = 256.0 * DBL_EPSILON * (n0 + u) * (n1 + u);
+    const auto	t     = std::min(std::min(std::abs(w[0]), std::abs(w[1])),
+				 std::abs(w[2]));
+    const auto	u     = (t < T(1) ? t : square(t));
+    const auto	error = 256.0 * std::numeric_limits<T>::epsilon() * square(u);
 
     Qt[1][0] = A[0][1]*A[1][2] - A[0][2]*A[1][1];
     Qt[1][1] = A[0][2]*A[0][1] - A[1][2]*A[0][0];
@@ -243,7 +233,7 @@ eigen33(const T A[3][3], T Qt[3][3], T w[3])
     Qt[0][0] = Qt[1][0] + A[0][2]*w[0];
     Qt[0][1] = Qt[1][1] + A[1][2]*w[0];
     Qt[0][2] = (A[0][0] - w[0]) * (A[1][1] - w[0]) - Qt[1][2];
-    T	norm = square(Qt[0][0]) + square(Qt[0][1]) + square(Qt[0][2]);
+    auto	norm = square(Qt[0][0]) + square(Qt[0][1]) + square(Qt[0][2]);
 
   // If vectors are nearly linearly dependent, or if there might have
   // been large cancellations in the calculation of A[i][i] - w[0], fall
