@@ -5,6 +5,7 @@
 #include <image_transport/image_transport.h>
 #include <image_transport/subscriber_filter.h>
 #include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
@@ -28,6 +29,8 @@ class Detector
     using image_p	= sensor_msgs::ImageConstPtr;
     using sync_policy_t	= message_filters::sync_policies::
 			      ApproximateTime<camera_info_t, image_t, image_t>;
+    using cloud_t	= sensor_msgs::PointCloud2;
+    using cloud_p	= sensor_msgs::PointCloud2ConstPtr;
 
     template <class T>
     class PointCloud
@@ -55,7 +58,7 @@ class Detector
 	std::vector<vector3_t>	_points; // 3D vertices
     };
 
-    using cloud_t	= PointCloud<double>;
+    using my_cloud_t	= PointCloud<double>;
 
   public:
 		Detector(const ros::NodeHandle& nh)			;
@@ -66,6 +69,7 @@ class Detector
     void	detect_plane_cb(const camera_info_p& camera_info_msg,
 				const image_p&	     image_msg,
 				const image_p&	     depth_msg)		;
+    void	cloud_cb(const cloud_p& cloud_msg)			;
     template <class T> cv::Vec<T, 3>
 		view_vector(T u, T v)				const	;
     template <class T> cv::Vec<T, 3>
@@ -82,6 +86,7 @@ class Detector
     image_transport::SubscriberFilter			_image_sub;
     image_transport::SubscriberFilter			_depth_sub;
     message_filters::Synchronizer<sync_policy_t>	_sync;
+    ros::Subscriber					_cloud_sub;
 
   // output stuff
     const ros::Publisher				_camera_info_pub;
@@ -93,10 +98,10 @@ class Detector
 
     double						_planarityTolerance;
 
-    cloud_t						_cloud;
+    my_cloud_t						_cloud;
     cv_bridge::CvImage					_seg_img;
 
-    ahc::PlaneFitter<cloud_t>				_plane_fitter;
+    ahc::PlaneFitter<my_cloud_t>			_plane_fitter;
     std::vector<std::vector<int> >			_plane_vertices;
 };
 }	// namepsace plane_detector

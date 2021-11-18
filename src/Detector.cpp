@@ -39,6 +39,9 @@ Detector::Detector(const ros::NodeHandle& nh)
      _image_pub(_it.advertise("image", 1)),
      _depth_pub(_it.advertise("depth", 1)),
      _pose_pub(_nh.advertise<geometry_msgs::PoseStamped>("pose", 100)),
+     _cloud_sub(_nh.subscribe<cloud_t>("/pointcloud", 1,
+				       boost::bind(&Detector::cloud_cb,
+						   this, _1))),
      _ddr(),
      _planarityTolerance(0.001),
      _cloud(),
@@ -96,6 +99,33 @@ Detector::detect_plane_cb(const camera_info_p& camera_info_msg,
     }
 }
 
+template <class T> void
+Detector<T>::cloud_cb(const cloud_p& cloud_msg)
+{
+    try
+    {
+	_cloud.resize(depth_msg->height, depth_msg->width);
+	cloud_to_points<float>(*cloud_msg, _cloud.begin(), milimeters<float>);
+	
+	_seg_img.header	  = depth_msg->header;
+	_seg_img.encoding = image_encodings::RGB8;
+	if (_seg_img.image.rows != depth_msg->height ||
+	    _seg_img.image.cols != depth_msg->width)
+	    _seg_img.image = cv::Mat(depth_msg->height, depth_msg->width,
+				     CV_8UC3);
+
+	_plane_fitter.run(&_cloud, &_plane_vertices, &_seg_img.image);
+
+	_camera_info_pub.publish(camera_info_msg);
+	_image_pub.publish(_seg_img.toImageMsg());
+	_depth_pub.publish(depth_msg);
+    }
+    catch (const std::exception& e)
+    {
+	ROS_WARN_STREAM(e.what());
+    }
+}
+    
 template <class T> inline cv::Vec<T, 3>
 Detector::at(const image_t& depth_msg, int u, int v) const
 {
