@@ -12,8 +12,7 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED
   COMPONENTS
-    ddynamic_reconfigure
-    geometry_msgs
+    sensor_msgs
     visualization_msgs
     image_transport
     cv_bridge
@@ -34,8 +33,7 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     message_runtime
-    geometry_msgs
-    visualization_msgs
+    sensor_msgs
     pluginlib
     nodelet
 )

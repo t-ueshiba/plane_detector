@@ -42,21 +42,10 @@ Detector::Detector(const ros::NodeHandle& nh)
      _cloud_sub(_nh.subscribe<cloud_t>("/pointcloud", 1,
 				       boost::bind(&Detector::cloud_cb,
 						   this, _1))),
-     _ddr(),
-     _planarityTolerance(0.001),
      _cloud(),
      _plane_fitter(),
      _plane_vertices()
 {
-  // Set planarity tolerance and setup its ddynamic_recoconfigure service.
-    _ddr.registerVariable<double>(
-    	"planarity_tolerance", &_planarityTolerance,
-    	"Planarity tolerance for extracting marker region(in meters)",
-    	0.0005, 0.05);
-
-  // Pulish ddynamic_reconfigure service.
-    _ddr.publishServicesTopics();
-
   // Register callback for marker detection.
     _sync.registerCallback(&Detector::detect_plane_cb, this);
 }
@@ -99,26 +88,27 @@ Detector::detect_plane_cb(const camera_info_p& camera_info_msg,
     }
 }
 
-template <class T> void
-Detector<T>::cloud_cb(const cloud_p& cloud_msg)
+void
+Detector::cloud_cb(const cloud_p& cloud_msg)
 {
     try
     {
-	_cloud.resize(depth_msg->height, depth_msg->width);
+	using namespace	sensor_msgs;
+	using namespace	aist_utility;
+	
+	_cloud.resize(cloud_msg->height, cloud_msg->width);
 	cloud_to_points<float>(*cloud_msg, _cloud.begin(), milimeters<float>);
 	
-	_seg_img.header	  = depth_msg->header;
+	_seg_img.header	  = cloud_msg->header;
 	_seg_img.encoding = image_encodings::RGB8;
-	if (_seg_img.image.rows != depth_msg->height ||
-	    _seg_img.image.cols != depth_msg->width)
-	    _seg_img.image = cv::Mat(depth_msg->height, depth_msg->width,
+	if (_seg_img.image.rows != cloud_msg->height ||
+	    _seg_img.image.cols != cloud_msg->width)
+	    _seg_img.image = cv::Mat(cloud_msg->height, cloud_msg->width,
 				     CV_8UC3);
 
 	_plane_fitter.run(&_cloud, &_plane_vertices, &_seg_img.image);
 
-	_camera_info_pub.publish(camera_info_msg);
 	_image_pub.publish(_seg_img.toImageMsg());
-	_depth_pub.publish(depth_msg);
     }
     catch (const std::exception& e)
     {
@@ -126,31 +116,4 @@ Detector<T>::cloud_cb(const cloud_p& cloud_msg)
     }
 }
     
-template <class T> inline cv::Vec<T, 3>
-Detector::at(const image_t& depth_msg, int u, int v) const
-{
-    const auto	xyz = view_vector<T>(u, v);
-    const auto	d   = val<T>(depth_msg, u, v);
-
-    return {xyz[0]*d, xyz[1]*d, d};
-}
-
-template <class T> cv::Vec<T, 3>
-Detector::at(const image_t& depth_msg, T u, T v) const
-{
-    const int	u0 = std::floor(u);
-    const int	v0 = std::floor(v);
-    const int	u1 = std::ceil(u);
-    const int	v1 = std::ceil(v);
-    for (auto vv = v0; vv <= v1; ++vv)
-	for (auto uu = u0; uu <= u1; ++uu)
-	{
-	    const auto	xyz = at<T>(depth_msg, uu, vv);
-	    if (xyz[2] != T(0))
-		return xyz;
-	}
-
-    return {T(0), T(0), T(0)};
-}
-
 }	// namespace plane_detector

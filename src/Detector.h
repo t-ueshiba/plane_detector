@@ -6,9 +6,6 @@
 #include <image_transport/subscriber_filter.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
-#include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -70,12 +67,6 @@ class Detector
 				const image_p&	     image_msg,
 				const image_p&	     depth_msg)		;
     void	cloud_cb(const cloud_p& cloud_msg)			;
-    template <class T> cv::Vec<T, 3>
-		view_vector(T u, T v)				const	;
-    template <class T> cv::Vec<T, 3>
-		at(const image_t& depth_msg, int u, int v)	const	;
-    template <class T> cv::Vec<T, 3>
-		at(const image_t& depth_msg, T u, T v)		const	;
 
   private:
     ros::NodeHandle					_nh;
@@ -93,10 +84,6 @@ class Detector
     const image_transport::Publisher			_image_pub;
     const image_transport::Publisher			_depth_pub;
     const ros::Publisher				_pose_pub;
-
-    ddynamic_reconfigure::DDynamicReconfigure		_ddr;
-
-    double						_planarityTolerance;
 
     my_cloud_t						_cloud;
     cv_bridge::CvImage					_seg_img;
