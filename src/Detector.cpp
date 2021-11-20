@@ -9,45 +9,20 @@
 namespace plane_detector
 {
 /************************************************************************
-*  global functions							*
-************************************************************************/
-template <class T> inline T
-val(const sensor_msgs::Image& image_msg, int u, int v)
-{
-    using namespace	sensor_msgs;
-
-    if (image_msg.encoding == image_encodings::TYPE_16UC1)
-    	return T(0.001) * *reinterpret_cast<const uint16_t*>(
-    				image_msg.data.data() + v*image_msg.step
-    						      + u*sizeof(uint16_t));
-    else
-	return *reinterpret_cast<const T*>(image_msg.data.data()
-					   + v*image_msg.step + u*sizeof(T));
-}
-
-/************************************************************************
 *  class Detector							*
 ************************************************************************/
 Detector::Detector(const ros::NodeHandle& nh)
     :_nh(nh),
      _it(_nh),
-     _camera_info_sub(_nh, "/camera_info", 1),
-     _image_sub(_it, "/image", 1),
-     _depth_sub(_it, "/depth", 1),
-     _sync(sync_policy_t(10), _camera_info_sub, _image_sub, _depth_sub),
-     _camera_info_pub(_nh.advertise<camera_info_t>("camera_info", 1)),
-     _image_pub(_it.advertise("image", 1)),
-     _depth_pub(_it.advertise("depth", 1)),
-     _pose_pub(_nh.advertise<geometry_msgs::PoseStamped>("pose", 100)),
+     _camera_sub(_it.subscribeCamera("/depth", 1, &Detector::camera_cb, this)),
      _cloud_sub(_nh.subscribe<cloud_t>("/pointcloud", 1,
 				       boost::bind(&Detector::cloud_cb,
 						   this, _1))),
+     _image_pub(_it.advertise("image", 1)),
      _cloud(),
      _plane_fitter(),
      _plane_vertices()
 {
-  // Register callback for marker detection.
-    _sync.registerCallback(&Detector::detect_plane_cb, this);
 }
 
 void
@@ -57,8 +32,8 @@ Detector::run()
 }
 
 void
-Detector::detect_plane_cb(const camera_info_p& camera_info_msg,
-			  const image_p& image_msg, const image_p& depth_msg)
+Detector::camera_cb(const image_p& depth_msg,
+		    const camera_info_p& camera_info_msg)
 {
     try
     {
@@ -78,9 +53,7 @@ Detector::detect_plane_cb(const camera_info_p& camera_info_msg,
 
 	_plane_fitter.run(&_cloud, &_plane_vertices, &_seg_img.image);
 
-	_camera_info_pub.publish(camera_info_msg);
 	_image_pub.publish(_seg_img.toImageMsg());
-	_depth_pub.publish(depth_msg);
     }
     catch (const std::exception& e)
     {

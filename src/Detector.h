@@ -35,7 +35,6 @@ class Detector
       public:
 	using value_t	= T;
 	using vector3_t	= cv::Vec<T, 3>;
-      //using vector3_t	= Eigen::Matrix<T, 3, 1>;
 
       public:
 	void	resize(int h, int w)
@@ -63,32 +62,25 @@ class Detector
     void	run()							;
 
   private:
-    void	detect_plane_cb(const camera_info_p& camera_info_msg,
-				const image_p&	     image_msg,
-				const image_p&	     depth_msg)		;
+    void	camera_cb(const image_p& depth_msg,
+			  const camera_info_p& camera_info_msg)		;
     void	cloud_cb(const cloud_p& cloud_msg)			;
 
   private:
-    ros::NodeHandle					_nh;
+    ros::NodeHandle			_nh;
 
   // input camera_info/image stuff
-    image_transport::ImageTransport			_it;
-    message_filters::Subscriber<camera_info_t>		_camera_info_sub;
-    image_transport::SubscriberFilter			_image_sub;
-    image_transport::SubscriberFilter			_depth_sub;
-    message_filters::Synchronizer<sync_policy_t>	_sync;
-    ros::Subscriber					_cloud_sub;
+    image_transport::ImageTransport	_it;
+    image_transport::CameraSubscriber	_camera_sub;
+    ros::Subscriber			_cloud_sub;
 
   // output stuff
-    const ros::Publisher				_camera_info_pub;
-    const image_transport::Publisher			_image_pub;
-    const image_transport::Publisher			_depth_pub;
-    const ros::Publisher				_pose_pub;
+    const image_transport::Publisher	_image_pub;
 
-    my_cloud_t						_cloud;
-    cv_bridge::CvImage					_seg_img;
+    my_cloud_t				_cloud;
+    cv_bridge::CvImage			_seg_img;
 
-    ahc::PlaneFitter<my_cloud_t>			_plane_fitter;
-    std::vector<std::vector<int> >			_plane_vertices;
+    ahc::PlaneFitter<my_cloud_t>	_plane_fitter;
+    std::vector<std::vector<int> >	_plane_vertices;
 };
 }	// namepsace plane_detector

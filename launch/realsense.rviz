@@ -117,7 +117,7 @@ Visualization Manager:
       Color Transformer: RGB8
       Color Transport Hint: raw
       Decay Time: 0
-      Depth Map Topic: /plane_detector/depth
+      Depth Map Topic: /realsense/aligned_depth_to_color/image_raw
       Depth Map Transport Hint: raw
       Enabled: true
       Invert Rainbow: false
@@ -179,10 +179,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.07697302103042603
+      Pitch: -0.0980270504951477
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.0058841705322266
+      Yaw: 3.060884475708008
     Saved: ~
 Window Geometry:
   Color:
