@@ -1,6 +1,5 @@
 <launch>
 
-  <arg name="planarity_tolerance"	default="0.001"/>
   <arg name="manager"			default=""/>
   <arg name="camera_info_topic"		default="camera_info"/>
   <arg name="image_topic"		default="texture"/>
@@ -12,9 +11,6 @@
     <remap from="/camera_info"		to="$(arg camera_info_topic)"/>
     <remap from="/image"		to="$(arg image_topic)"/>
     <remap from="/depth"		to="$(arg depth_topic)"/>
-
-    <!-- Other parameters -->
-    <param name="planarity_tolerance"	value="$(arg planarity_tolerance)"/>
   </node>
 
   <node unless="$(eval manager == '')"
@@ -23,9 +19,6 @@
     <remap from="/camera_info"		to="$(arg camera_info_topic)"/>
     <remap from="/image"		to="$(arg image_topic)"/>
     <remap from="/depth"		to="$(arg depth_topic)"/>
-
-    <!-- Other parameters -->
-    <param name="planarity_tolerance"	value="$(arg planarity_tolerance)"/>
   </node>
 
 </launch>

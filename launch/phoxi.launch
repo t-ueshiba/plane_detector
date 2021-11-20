@@ -4,7 +4,6 @@
   <arg name="camera_id"			default="2018-09-016-LC3"/>
   <arg name="camera_name"		default="a_phoxi_m_camera"/>
   <arg name="camera_frame"		default="calibrated_$(arg camera_name)"/>
-  <arg name="planarity_tolerance"	default="0.001"/>
   <arg name="manager"			default=""/>
   <arg name="vis"			default="true"/>
 
@@ -24,7 +23,6 @@
     <arg name="camera_info_topic"	value="$(arg camera_name)/camera_info"/>
     <arg name="image_topic"		value="$(arg camera_name)/texture"/>
     <arg name="depth_topic"		value="$(arg camera_name)/depth_map"/>
-    <arg name="planarity_tolerance"	value="$(arg planarity_tolerance)"/>
     <arg name="manager"			value="$(arg manager)"/>
   </include>
 

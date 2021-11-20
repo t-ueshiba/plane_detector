@@ -5,7 +5,6 @@
   <arg name="camera_width"		default="640"/>
   <arg name="camera_height"		default="480"/>
   <arg name="camera_frame"		default=""/>
-  <arg name="planarity_tolerance"	default="0.005"/>
   <arg name="manager"			default=""/>
   <arg name="publish_tf"		default="true"/>
   <arg name="vis"			default="true"/>
@@ -36,7 +35,6 @@
 					       )/color/image_raw"/>
     <arg name="depth_topic"
 	 value="$(arg camera_name)/aligned_depth_to_color/image_raw"/>
-    <arg name="planarity_tolerance"	value="$(arg planarity_tolerance)"/>
     <arg name="manager"			value="$(arg manager)"/>
   </include>
 
