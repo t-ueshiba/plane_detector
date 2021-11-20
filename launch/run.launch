@@ -1,24 +1,32 @@
 <launch>
 
-  <arg name="manager"			default=""/>
-  <arg name="camera_info_topic"		default="camera_info"/>
-  <arg name="image_topic"		default="texture"/>
-  <arg name="depth_topic"		default="depth_map"/>
+  <arg name="manager"		default=""/>
+  <arg name="camera_info_topic"	default="camera_info"/>
+  <arg name="image_topic"	default="texture"/>
+  <arg name="depth_topic"	default="depth_map"/>
+  <arg name="cloud_topic"	default="pointcloud"/>
+  <arg name="subscribe_cloud"	default="false"/>
 
   <node if="$(eval manager == '')"
 	name="plane_detector" pkg="plane_detector" type="plane_detector"
   	output="screen">
-    <remap from="/camera_info"		to="$(arg camera_info_topic)"/>
-    <remap from="/image"		to="$(arg image_topic)"/>
-    <remap from="/depth"		to="$(arg depth_topic)"/>
+    <remap from="/camera_info"	to="$(arg camera_info_topic)"/>
+    <remap from="/image"	to="$(arg image_topic)"/>
+    <remap unless="$(arg subscribe_cloud)"
+	   from="/depth"	to="$(arg depth_topic)"/>
+    <remap if="$(arg subscribe_cloud)"
+	   from="/pointcloud"	to="$(arg cloud_topic)"/>
   </node>
 
   <node unless="$(eval manager == '')"
 	name="plane_detector" pkg="nodelet" type="nodelet" output="screen"
   	args="load plane_detector/plane_detector_nodelet $(arg manager)">
-    <remap from="/camera_info"		to="$(arg camera_info_topic)"/>
-    <remap from="/image"		to="$(arg image_topic)"/>
-    <remap from="/depth"		to="$(arg depth_topic)"/>
+    <remap from="/camera_info"	to="$(arg camera_info_topic)"/>
+    <remap from="/image"	to="$(arg image_topic)"/>
+    <remap unless="$(arg subscribe_cloud)"
+	   from="/depth"	to="$(arg depth_topic)"/>
+    <remap if="$(arg subscribe_cloud)"
+	   from="/pointcloud"	to="$(arg cloud_topic)"/>
   </node>
 
 </launch>
