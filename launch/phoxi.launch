@@ -26,8 +26,7 @@
     <arg name="depth_topic"		value="$(arg camera_name)/depth_map"/>
     <arg name="cloud_topic"		value="$(arg camera_name)/pointcloud"/>
     <arg name="subscribe_cloud"		value="$(arg subscribe_cloud)"/>
-    <arg name="manager"			value="$(arg manager)"
-	 unless="$(eval manager == '')"/>
+    <arg name="manager"			value="$(arg manager)"/>
   </include>
 
   <node name="$(anon rviz)" pkg="rviz" type="rviz" output="screen"
