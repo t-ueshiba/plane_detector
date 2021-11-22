@@ -12,17 +12,11 @@
 	pkg="tf" type="static_transform_publisher"
         args="0 0 0 0 0 0 base_link $(arg camera_frame) 10"/>
 
-  <node unless="$(eval manager == '')"
-	name="$(arg manager)"
-	pkg ="nodelet" type="nodelet" args="manager" output="screen">
-  </node>
-  
   <include file="$(find aist_phoxi_camera)/launch/run.launch">
     <arg name="id"			value="$(arg camera_id)"/>
     <arg name="camera_name"		value="$(arg camera_name)"/>
     <arg name="frame"			value="$(arg camera_frame)"/>
     <arg name="trigger_mode"		value="0"/>
-    <arg name="external_manager"	value="true"/>
     <arg name="manager"			value="$(arg manager)"/>
   </include>
 
@@ -32,7 +26,8 @@
     <arg name="depth_topic"		value="$(arg camera_name)/depth_map"/>
     <arg name="cloud_topic"		value="$(arg camera_name)/pointcloud"/>
     <arg name="subscribe_cloud"		value="$(arg subscribe_cloud)"/>
-    <arg name="manager"			value="$(arg manager)"/>
+    <arg name="manager"			value="$(arg manager)"
+	 unless="$(eval manager == '')"/>
   </include>
 
   <node name="$(anon rviz)" pkg="rviz" type="rviz" output="screen"
