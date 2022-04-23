@@ -70,7 +70,8 @@ Detector::cloud_cb(const cloud_p& cloud_msg)
 	using namespace	aist_utility;
 	
 	_cloud.resize(cloud_msg->height, cloud_msg->width);
-	cloud_to_points<float>(*cloud_msg, _cloud.begin(), milimeters<float>);
+	pointcloud_to_points<float>(*cloud_msg, _cloud.begin(),
+				    milimeters<float>);
 	
 	_seg_img.header	  = cloud_msg->header;
 	_seg_img.encoding = image_encodings::RGB8;
