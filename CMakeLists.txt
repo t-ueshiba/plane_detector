@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 2.8.3)
 project(plane_detector)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-w)
-add_compile_options(-std=c++14)
-add_compile_options(-fpermissive)
-add_compile_options(-pthread)
-add_compile_options(-O2)
+enable_language(CXX)
+
+set(CMAKE_CXX_STANDARD		17)
+set(CMAKE_CXX_STANDARD_REQUIRED	ON)
+set(CMAKE_CXX_EXTENSIONS	OFF)
+set(CMAKE_CXX_FLAGS_RELEASE	"-Wall -O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG	"-g")
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)

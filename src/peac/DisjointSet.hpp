@@ -53,7 +53,7 @@ class DisjointSet
 		    }
 		}
 
-    int		getSetSize(int x)	const	{ return _size[Find(x)]; }
+    int		getSetSize(int x)		{ return _size[Find(x)]; }
 
     int		Union(int x, int y)
 		{
